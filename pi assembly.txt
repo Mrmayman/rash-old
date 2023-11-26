@@ -1,0 +1,13 @@
+var_set 0 0.0;
+var_set 2 1.0;
+var_set 4 0.0;
+op_mod 5 4 2.0;
+op_mult 5 5 2.0;
+op_sub 3 5 1.0;
+op_div 5 4.0 2;
+op_mult 5 3 5;
+op_add 0 0 5;
+op_add 2 2 2.0;
+op_add 4 4 1.0;
+op_lesser 5 4 1000000.0;
+flow_if 5 jump 5.0;

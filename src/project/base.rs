@@ -1,0 +1,282 @@
+use sdl2::render::{Texture, TextureCreator};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{self, Read},
+    str::FromStr,
+};
+use tempfile::TempDir;
+
+use crate::{
+    interpreter::{Instruction, Value},
+    project::state::ParseState,
+    sprite::{GraphicalProperties, Sprite},
+    thread::Thread,
+};
+
+pub struct Project<'a> {
+    _temp_directory: TempDir,
+    memory: Box<[Value]>,
+    sprites: Vec<Sprite<'a>>,
+    pub path: std::path::PathBuf,
+    pub json: serde_json::Value,
+}
+
+pub enum BlockResult {
+    Nothing,
+    AllocatedMemory(usize),
+}
+
+impl<'a> Project<'a> {
+    pub fn new(file_path: String) -> Result<Project<'a>, String> {
+        let (temp_dir, temp_dir_path) = Project::load_project_file(file_path);
+        let json = Project::parse(&temp_dir_path);
+
+        let mut temp_project = Project {
+            _temp_directory: temp_dir,
+            memory: Box::new([]),
+            sprites: vec![],
+            path: temp_dir_path,
+            json,
+        };
+
+        /*println!(
+            "{}",
+            serde_json::to_string_pretty(&temp_project.json).expect("Could not print project.json")
+        );*/
+
+        let mut variables: HashMap<String, usize> = HashMap::new();
+        let mut variable_memory: Vec<Value> = vec![];
+
+        for sprite in temp_project.json["targets"]
+            .as_array()
+            .expect("Malformed JSON - No \"targets\" list of sprites")
+        {
+            let mut temp_sprite = Sprite::new(
+                sprite["name"].as_str().unwrap().to_string(),
+                if sprite["isStage"].as_bool().unwrap() {
+                    Default::default()
+                } else {
+                    GraphicalProperties {
+                        x: sprite["x"].as_f64().unwrap(),
+                        y: sprite["y"].as_f64().unwrap(),
+                        direction: sprite["direction"].as_f64().unwrap() as f32,
+                        size: sprite["size"].as_f64().unwrap() as f32,
+                    }
+                },
+            );
+
+            println!(
+                "[info] started compiling sprite {}",
+                sprite["name"].as_str().unwrap()
+            );
+
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&sprite).expect("Could not print project.json")
+            );
+
+            for costume in sprite["costumes"].as_array().unwrap() {
+                println!("{costume}");
+                match costume["dataFormat"].as_str().unwrap() {
+                    "svg" => {
+                        let args = crate::third_party::svg_to_png::Args {
+                            input: temp_project.path.join(costume["md5ext"].as_str().unwrap()), /*std::path::PathBuf::from_str("./flamegraph.svg").unwrap(),*/
+                            output: std::path::PathBuf::from_str(
+                                (costume["assetId"].as_str().unwrap().to_string() + ".png")
+                                    .as_str(),
+                            )
+                            .unwrap(),
+                            colors: "000000".to_string(),
+                            width: 800,
+                            height: 600,
+                        };
+                        let mut svg_renderer =
+                            crate::third_party::svg_to_png::Renderer::new(&args).unwrap();
+                        svg_renderer.render(args.input.as_ref(), &args).unwrap();
+                    }
+                    _ => panic!(),
+                }
+                /*    let args = Args {
+                    input: std::path::PathBuf::from_str("./flamegraph.svg").unwrap(),
+                    output: std::path::PathBuf::from_str("./flamegraph.png").unwrap(),
+                    colors: "000000".to_string(),
+                    width: 800,
+                    height: 600,
+                };
+                let mut svg_renderer = third_party::svg_to_png::Renderer::new(&args).unwrap();
+                svg_renderer.render(args.input.as_ref(), &args).unwrap(); */
+            }
+
+            for (variable_hash, variable_data) in sprite["variables"].as_object().unwrap() {
+                variable_memory.push({
+                    match &variable_data.as_array().unwrap()[1] {
+                        serde_json::Value::Bool(n) => Value::Boolean(*n),
+                        serde_json::Value::Number(n) => Value::Number(n.as_f64().unwrap()),
+                        serde_json::Value::String(n) => Value::String(n.clone()),
+                        _ => panic!(),
+                    }
+                });
+                variables.insert(variable_hash.clone(), variable_memory.len() - 1);
+            }
+
+            let mut orphans: Vec<(&String, &serde_json::Value)> = vec![];
+
+            for (block_id, block_data) in sprite["blocks"].as_object().unwrap() {
+                if block_data.is_array() {
+                    eprintln!("[unimplemented] block is an array");
+                    break;
+                }
+                if block_data["parent"] == serde_json::Value::Null {
+                    orphans.push((block_id, block_data));
+                }
+            }
+
+            for (thread_number, (_, block_data)) in orphans.iter().enumerate() {
+                let opcode = block_data["opcode"].as_str().unwrap();
+                match opcode {
+                    "event_whenflagclicked" => c_events_whenflagclicked(
+                        &mut variables,
+                        &mut variable_memory,
+                        &mut temp_sprite,
+                        *block_data,
+                        thread_number,
+                        sprite,
+                    ),
+                    _ => {
+                        eprintln!("[unimplemented hat block] {opcode}")
+                    }
+                }
+            }
+
+            temp_project.sprites.push(temp_sprite);
+        }
+
+        // temp_project.malloc(variables.len());
+        temp_project.memory = variable_memory.into_boxed_slice();
+
+        // temp_project._load_pi_project();
+
+        Ok(temp_project)
+    }
+
+    fn _load_pi_project(&mut self) {
+        self.sprites
+            .push(Sprite::new("Sprite1".to_string(), Default::default()));
+        self.sprites[0].threads.push(Thread::new(
+            vec![
+                Instruction::MemoryStore(Value::Pointer(0), Value::Number(0.0)),
+                Instruction::MemoryStore(Value::Pointer(2), Value::Number(1.0)),
+                Instruction::MemoryStore(Value::Pointer(4), Value::Number(0.0)),
+                // Instruction::MemoryDump,
+                // Instruction::FlowDefinePlace("Starting".to_string()),
+                Instruction::OperatorModulo(
+                    Value::Pointer(5),
+                    Value::Pointer(4),
+                    Value::Number(2.0),
+                ),
+                Instruction::OperatorMultiply(
+                    Value::Pointer(5),
+                    Value::Pointer(5),
+                    Value::Number(2.0),
+                ),
+                Instruction::OperatorSubtract(
+                    Value::Pointer(3),
+                    Value::Pointer(5),
+                    Value::Number(1.0),
+                ),
+                Instruction::OperatorDivide(
+                    Value::Pointer(5),
+                    Value::Number(4.0),
+                    Value::Pointer(2),
+                ),
+                Instruction::OperatorMultiply(
+                    Value::Pointer(5),
+                    Value::Pointer(3),
+                    Value::Pointer(5),
+                ),
+                Instruction::OperatorAdd(Value::Pointer(0), Value::Pointer(0), Value::Pointer(5)),
+                Instruction::OperatorAdd(Value::Pointer(2), Value::Pointer(2), Value::Number(2.0)),
+                Instruction::OperatorAdd(Value::Pointer(4), Value::Pointer(4), Value::Number(1.0)),
+                Instruction::OperatorLesser(
+                    Value::Pointer(5),
+                    Value::Pointer(4),
+                    Value::Number(1_000_000.0),
+                ),
+                // Instruction::FlowIfJumpToPlace(Value::Pointer(5), "Starting".to_string()),
+                Instruction::FlowIfJump(Value::Pointer(5), Value::Number(5.0)),
+                // Instruction::MemoryDump,
+                Instruction::ThreadPause,
+                Instruction::ThreadKill,
+            ]
+            .into_boxed_slice(),
+        ));
+        self._malloc(16);
+    }
+
+    pub fn _malloc(&mut self, size: usize) {
+        self.memory = vec![Value::Number(0.0); size].into_boxed_slice();
+    }
+
+    pub fn run(&mut self) {
+        for sprite in &mut self.sprites {
+            sprite.run(&mut self.memory);
+        }
+    }
+
+    pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
+        for sprite in &self.sprites {
+            let rect = sdl2::rect::Rect::new(
+                sprite.graphical_properties.x as i32 + (canvas.output_size().unwrap().0 as i32 / 2),
+                (canvas.output_size().unwrap().1 as i32 / 2) - sprite.graphical_properties.y as i32,
+                100 * (sprite.graphical_properties.size / 100.0) as u32,
+                100 * (sprite.graphical_properties.size / 100.0) as u32,
+            );
+            canvas.fill_rect(rect).unwrap();
+        }
+    }
+}
+
+fn c_events_whenflagclicked(
+    variables: &mut HashMap<String, usize>,
+    variable_memory: &mut Vec<Value>,
+    temp_sprite: &mut Sprite,
+    block_data: &serde_json::Value,
+    thread_number: usize,
+    sprite: &serde_json::Value,
+) {
+    let mut instructions: Vec<Instruction> = vec![];
+    let mut current_block = (*block_data).clone();
+
+    let mut state = ParseState::new(variables, variable_memory, &mut instructions, thread_number);
+
+    while current_block["next"] != serde_json::Value::Null {
+        let next = current_block["next"].as_str().unwrap();
+        current_block = get_block(next, &sprite).unwrap();
+        state.compile_block(&current_block, &sprite);
+    }
+    instructions.push(Instruction::ThreadKill);
+
+    println!("[variable dump] {{");
+    for (variable, i) in variables.iter() {
+        println!("    {i}: {variable} ({})", variable_memory[*i]);
+    }
+    println!("}}");
+    println!("[instruction dump] {{");
+    for instruction in &instructions {
+        println!("    {}", instruction.print(variables));
+    }
+    println!("}}");
+    temp_sprite
+        .threads
+        .push(Thread::new(instructions.into_boxed_slice()));
+}
+
+pub fn get_block(next: &str, sprite: &serde_json::Value) -> Option<serde_json::Value> {
+    for (block_id, block_data) in sprite["blocks"].as_object().unwrap() {
+        if block_id == next {
+            return Some(block_data.clone());
+        }
+    }
+    None
+}
