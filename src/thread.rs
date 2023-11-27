@@ -1,4 +1,7 @@
-use crate::interpreter::{Instruction, Value};
+use crate::{
+    interpreter::{Instruction, Value},
+    sprite::GraphicalProperties,
+};
 
 pub struct Thread {
     instructions: Box<[Instruction]>,
@@ -15,9 +18,9 @@ impl Thread {
         }
     }
 
-    pub fn run(&mut self, memory: &mut [Value]) {
+    pub fn run(&mut self, memory: &mut [Value], properties: &mut GraphicalProperties) {
         loop {
-            let should_break: bool = self.run_bytecode(memory);
+            let should_break: bool = self.run_bytecode(memory, properties);
             if should_break {
                 break;
             }
@@ -40,7 +43,7 @@ impl Thread {
         None
     }
 
-    fn run_bytecode(&mut self, memory: &mut [Value]) -> bool {
+    fn run_bytecode(&mut self, memory: &mut [Value], properties: &mut GraphicalProperties) -> bool {
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {
                 println!("Memory dump");
@@ -162,6 +165,12 @@ impl Thread {
                 }
             }
             Instruction::FlowDefinePlace(_) => {}
+            Instruction::MotionChangeX(n) => properties.x += n.get_number(memory),
+            Instruction::MotionChangeY(n) => properties.y += n.get_number(memory),
+            Instruction::MotionGoTo(x, y) => {
+                properties.x = x.get_number(memory);
+                properties.y = y.get_number(memory);
+            }
         }
         false
     }

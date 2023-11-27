@@ -28,6 +28,7 @@ mod project {
 
 mod compile {
     pub mod control;
+    pub mod motion;
     pub mod operators;
     pub mod variables;
 }
@@ -48,10 +49,10 @@ fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
 
-    canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 0, 0));
+    let texture_creator = canvas.texture_creator();
 
-    let mut project =
-        project::base::Project::new(get_project_file_path()).expect("Could not load project");
+    let mut project = project::base::Project::new(get_project_file_path(), &texture_creator)
+        .expect("Could not load project");
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut last_frame_time = std::time::Instant::now();
@@ -66,7 +67,10 @@ fn main() {
             }
         }
 
+        canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 255, 255));
+        canvas.clear();
         project.run();
+        canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 0, 255));
         project.draw(&mut canvas);
         canvas.present();
 

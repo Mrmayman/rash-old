@@ -1,3 +1,4 @@
+use sdl2::image::LoadTexture;
 use std::collections::HashMap;
 use tempfile::TempDir;
 
@@ -23,7 +24,10 @@ pub enum BlockResult {
 }
 
 impl<'a> Project<'a> {
-    pub fn new(file_path: String) -> Result<Project<'a>, String> {
+    pub fn new(
+        file_path: String,
+        texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+    ) -> Result<Project<'a>, String> {
         let (temp_dir, temp_dir_path) = Project::load_project_file(file_path);
         let json = Project::parse(&temp_dir_path);
 
@@ -57,6 +61,7 @@ impl<'a> Project<'a> {
                         y: sprite["y"].as_f64().unwrap(),
                         direction: sprite["direction"].as_f64().unwrap() as f32,
                         size: sprite["size"].as_f64().unwrap() as f32,
+                        costume_number: 0,
                     }
                 },
             );
@@ -75,26 +80,14 @@ impl<'a> Project<'a> {
             db.load_system_fonts();
 
             for costume in sprite["costumes"].as_array().unwrap() {
-                if costume["dataFormat"].as_str().unwrap() == "svg" {
-                    let temp_project = &temp_project;
-                    third_party::svg_to_png::render(
-                        temp_project
-                            .path
-                            .join(costume["md5ext"].as_str().unwrap())
-                            .as_ref(),
-                        temp_project
-                            .path
-                            .join(costume["assetId"].as_str().unwrap().to_string() + ".png")
-                            .as_ref(),
-                        &db,
-                    )
-                    .unwrap();
-                }
-                println!("{costume}");
+                costume_convert_svg_to_png(costume, &temp_project, &db);
+                let texture = costume_load_png(texture_creator, &temp_project, costume);
+
                 temp_sprite.costumes.push(Costume {
                     centre_x: costume["rotationCenterX"].as_f64().unwrap(),
                     centre_y: costume["rotationCenterY"].as_f64().unwrap(),
-                    data: None,
+                    data: texture,
+                    name: costume["name"].as_str().unwrap().to_string(),
                 });
             }
 
@@ -233,15 +226,81 @@ impl<'a> Project<'a> {
 
     pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
         for sprite in &self.sprites {
+            let properties = &sprite.graphical_properties;
+            let size = properties.size / 100.0;
+            let current_costume = &sprite.costumes[properties.costume_number];
+            let query = current_costume.data.query();
+
+            let (canvas_width, canvas_height) = canvas.output_size().unwrap();
+
+            let size_difference_f64 = canvas_width as f64 / 480.0;
+            let size_difference_f32 = canvas_width as f32 / 480.0;
+
+            let width = size * query.width as f32 * size_difference_f32;
+            let height = size * query.height as f32 * size_difference_f32;
+
+            let mut sprite_x = properties.x - current_costume.centre_x;
+            let mut sprite_y = properties.y + current_costume.centre_y;
+
+            sprite_x *= size_difference_f64;
+            sprite_y *= size_difference_f64;
+
+            sprite_x = sprite_x + canvas_width as f64 / 2.0;
+            sprite_y = (canvas_height as f64 / 2.0) - sprite_y;
+
             let rect = sdl2::rect::Rect::new(
-                sprite.graphical_properties.x as i32 + (canvas.output_size().unwrap().0 as i32 / 2),
-                (canvas.output_size().unwrap().1 as i32 / 2) - sprite.graphical_properties.y as i32,
-                100 * (sprite.graphical_properties.size / 100.0) as u32,
-                100 * (sprite.graphical_properties.size / 100.0) as u32,
+                sprite_x as i32,
+                sprite_y as i32,
+                width as u32,
+                height as u32,
             );
-            canvas.fill_rect(rect).unwrap();
+            canvas.copy(&current_costume.data, None, rect).unwrap();
         }
     }
+}
+
+fn costume_load_png<'a>(
+    texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+    temp_project: &Project<'_>,
+    costume: &serde_json::Value,
+) -> sdl2::render::Texture<'a> {
+    let texture: sdl2::render::Texture<'a> = load_texture_from_file(
+        &texture_creator,
+        temp_project
+            .path
+            .join(costume["assetId"].as_str().unwrap().to_string() + ".png"),
+    )
+    .unwrap();
+    texture
+}
+
+fn costume_convert_svg_to_png(
+    costume: &serde_json::Value,
+    temp_project: &Project<'_>,
+    db: &usvg_text_layout::fontdb::Database,
+) {
+    if costume["dataFormat"].as_str().unwrap() == "svg" {
+        let temp_project = temp_project;
+        third_party::svg_to_png::render(
+            temp_project
+                .path
+                .join(costume["md5ext"].as_str().unwrap())
+                .as_ref(),
+            temp_project
+                .path
+                .join(costume["assetId"].as_str().unwrap().to_string() + ".png")
+                .as_ref(),
+            db,
+        )
+        .unwrap();
+    }
+}
+
+fn load_texture_from_file(
+    texture_creator: &sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+    file_path: std::path::PathBuf,
+) -> Result<sdl2::render::Texture<'_>, String> {
+    Ok(texture_creator.load_texture(file_path).unwrap())
 }
 
 fn c_events_whenflagclicked(

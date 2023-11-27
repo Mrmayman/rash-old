@@ -5,6 +5,7 @@ pub struct GraphicalProperties {
     pub y: f64,
     pub size: f32,
     pub direction: f32,
+    pub costume_number: usize,
 }
 
 impl Default for GraphicalProperties {
@@ -14,6 +15,7 @@ impl Default for GraphicalProperties {
             y: 0.0,
             size: 100.0,
             direction: 90.0,
+            costume_number: 0,
         }
     }
 }
@@ -21,7 +23,8 @@ impl Default for GraphicalProperties {
 pub struct Costume<'a> {
     pub centre_x: f64,
     pub centre_y: f64,
-    pub data: Option<sdl2::render::Texture<'a>>,
+    pub data: sdl2::render::Texture<'a>,
+    pub name: String,
 }
 
 pub struct Sprite<'a> {
@@ -45,7 +48,7 @@ impl<'a> Sprite<'a> {
         let mut i = 0;
         while i < self.threads.len() {
             let thread = &mut self.threads[i];
-            thread.run(memory);
+            thread.run(memory, &mut self.graphical_properties);
 
             if thread.killed {
                 self.threads.remove(i);

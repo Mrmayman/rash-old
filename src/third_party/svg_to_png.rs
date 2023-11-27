@@ -1,3 +1,4 @@
+use serde::Deserialize;
 /**
  *  svg2colored-png, an svg to png converter
  *  Copyright (C) 2023 MCorange<mcorangecodes@gmail.com>
@@ -20,6 +21,18 @@
  *  which I modified, at: <https://github.com/MCorange99/svg2colored-png>
  *  - Mrmayman
 */
+use serde_xml_rs::from_str;
+
+#[derive(Debug, Deserialize)]
+struct Svg {
+    #[serde(rename = "width")]
+    width: String,
+
+    #[serde(rename = "height")]
+    height: String,
+    // Add other fields as needed
+}
+
 use std::path::Path;
 
 use usvg_text_layout::TreeTextToPath;
@@ -37,15 +50,19 @@ pub fn render(
 
     // Check if output PNG already exists.
     let fo: &Path = &output;
-    if fo.exists() {
-        return Err("File {fo:?} exists".to_string());
-    }
 
     // Load SVG Data.
     let svg = match std::fs::read_to_string(input) {
         Ok(d) => d,
         Err(_) => return Err("File {fi:?} does not exist".to_string()),
     };
+
+    let parsed: Svg = serde_xml_rs::from_str(&svg).unwrap();
+    if parsed.width == "0" && parsed.height == "0" {
+        let blank_image = image::DynamicImage::new_rgba8(1, 1);
+        blank_image.save(output).unwrap();
+        return Ok(());
+    }
 
     // Setup USVG Options.
     let mut opt = usvg::Options::default();
@@ -57,17 +74,18 @@ pub fn render(
     // Build SVG Tree.
     let mut tree = match usvg::Tree::from_data(svg.as_bytes(), &opt) {
         Ok(v) => v,
-        Err(_) => return Err("Failed to parse {fi:?}".to_string()),
+        Err(_) => return Err(format!("Failed to parse {} {svg}", input.to_string_lossy())),
     };
     // Render text if needed.
     tree.convert_text(&fontdb);
 
     // Create Pixel Map to draw SVG to.
-    let mut pixmap = tiny_skia::Pixmap::new(200, 200).unwrap();
+    let mut pixmap =
+        tiny_skia::Pixmap::new(tree.size.width() as u32, tree.size.height() as u32).unwrap();
     // Draw to Pixel Map.
     resvg::render(
         &tree,
-        usvg::FitTo::Size(200, 200),
+        usvg::FitTo::Original,
         tiny_skia::Transform::default(),
         pixmap.as_mut(),
     )

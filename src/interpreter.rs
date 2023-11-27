@@ -19,30 +19,9 @@ pub enum Instruction {
     FlowDefinePlace(String),
     FlowIfNotJump(Value, Value),
     FlowIfNotJumpToPlace(Value, String),
-}
-
-impl std::fmt::Display for Instruction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            Instruction::MemoryStore(at, n) => write!(f, "{} = {};", at, n),
-            Instruction::MemoryDump => write!(f, "std::dumpMemory();"),
-            Instruction::ThreadKill => write!(f, "return;"),
-            Instruction::ThreadPause => write!(f, "std::renderFrame()"),
-            Instruction::OperatorModulo(l, a, b) => write!(f, "{l} = {a} % {b}"),
-            Instruction::OperatorAdd(l, a, b) => write!(f, "{l} = {a} + {b}"),
-            Instruction::OperatorSubtract(l, a, b) => write!(f, "{l} = {a} - {b}"),
-            Instruction::OperatorMultiply(l, a, b) => write!(f, "{l} = {a} * {b}"),
-            Instruction::OperatorDivide(l, a, b) => write!(f, "{l} = {a} / {b}"),
-            Instruction::OperatorLesser(l, a, b) => write!(f, "{l} = {a} < {b}"),
-            Instruction::OperatorGreater(l, a, b) => write!(f, "{l} = {a} > {b}"),
-            Instruction::OperatorEquals(l, a, b) => write!(f, "{l} = {a} == {b}"),
-            Instruction::FlowIfJump(c, l) => write!(f, "if {c} jump to {l}"),
-            Instruction::FlowIfJumpToPlace(c, l) => write!(f, "if {c} goto {l}"),
-            Instruction::FlowDefinePlace(p) => write!(f, "{p}:"),
-            Instruction::FlowIfNotJump(c, l) => write!(f, "if !{c} jump to {l}"),
-            Instruction::FlowIfNotJumpToPlace(c, l) => write!(f, "if !{c} goto {l}"),
-        }
-    }
+    MotionChangeX(Value),
+    MotionChangeY(Value),
+    MotionGoTo(Value, Value),
 }
 
 impl Instruction {
@@ -123,6 +102,9 @@ impl Instruction {
             Instruction::FlowDefinePlace(p) => format!("{p}:"),
             Instruction::FlowIfNotJump(c, l) => format!("if !{c} jump to {l}"),
             Instruction::FlowIfNotJumpToPlace(c, l) => format!("if !{c} goto {l}"),
+            Instruction::MotionChangeX(n) => format!("change x by {n}"),
+            Instruction::MotionChangeY(n) => format!("change y by {n}"),
+            Instruction::MotionGoTo(x, y) => format!("go to x: {x}, y: {y}"),
         }
     }
 }
