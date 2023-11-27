@@ -137,7 +137,7 @@ fn find_key_by_value(map: &HashMap<String, usize>, target_value: usize) -> Optio
 }
 
 pub fn get_var(variables: &HashMap<String, usize>, item: &Value) -> String {
-    let mut pointer: usize = 0;
+    let pointer: usize;
     match &item {
         Value::Pointer(n) => pointer = *n,
         _ => panic!(),

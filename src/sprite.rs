@@ -19,9 +19,9 @@ impl Default for GraphicalProperties {
 }
 
 pub struct Costume<'a> {
-    centre_x: f64,
-    centre_y: f64,
-    data: sdl2::render::Texture<'a>,
+    pub centre_x: f64,
+    pub centre_y: f64,
+    pub data: Option<sdl2::render::Texture<'a>>,
 }
 
 pub struct Sprite<'a> {

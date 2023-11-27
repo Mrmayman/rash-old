@@ -1,16 +1,11 @@
-use sdl2::render::{Texture, TextureCreator};
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{self, Read},
-    str::FromStr,
-};
+use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::{
     interpreter::{Instruction, Value},
     project::state::ParseState,
-    sprite::{GraphicalProperties, Sprite},
+    sprite::{Costume, GraphicalProperties, Sprite},
+    third_party,
     thread::Thread,
 };
 
@@ -71,42 +66,54 @@ impl<'a> Project<'a> {
                 sprite["name"].as_str().unwrap()
             );
 
-            println!(
+            /*println!(
                 "{}",
                 serde_json::to_string_pretty(&sprite).expect("Could not print project.json")
-            );
+            );*/
+
+            let mut db = usvg_text_layout::fontdb::Database::new();
+            db.load_system_fonts();
 
             for costume in sprite["costumes"].as_array().unwrap() {
-                println!("{costume}");
-                match costume["dataFormat"].as_str().unwrap() {
-                    "svg" => {
-                        let args = crate::third_party::svg_to_png::Args {
-                            input: temp_project.path.join(costume["md5ext"].as_str().unwrap()), /*std::path::PathBuf::from_str("./flamegraph.svg").unwrap(),*/
-                            output: std::path::PathBuf::from_str(
-                                (costume["assetId"].as_str().unwrap().to_string() + ".png")
-                                    .as_str(),
-                            )
-                            .unwrap(),
-                            colors: "000000".to_string(),
-                            width: 800,
-                            height: 600,
-                        };
-                        let mut svg_renderer =
-                            crate::third_party::svg_to_png::Renderer::new(&args).unwrap();
-                        svg_renderer.render(args.input.as_ref(), &args).unwrap();
-                    }
-                    _ => panic!(),
+                if costume["dataFormat"].as_str().unwrap() == "svg" {
+                    let temp_project = &temp_project;
+                    third_party::svg_to_png::render(
+                        temp_project
+                            .path
+                            .join(costume["md5ext"].as_str().unwrap())
+                            .as_ref(),
+                        temp_project
+                            .path
+                            .join(costume["assetId"].as_str().unwrap().to_string() + ".png")
+                            .as_ref(),
+                        &db,
+                    )
+                    .unwrap();
                 }
-                /*    let args = Args {
-                    input: std::path::PathBuf::from_str("./flamegraph.svg").unwrap(),
-                    output: std::path::PathBuf::from_str("./flamegraph.png").unwrap(),
-                    colors: "000000".to_string(),
-                    width: 800,
-                    height: 600,
-                };
-                let mut svg_renderer = third_party::svg_to_png::Renderer::new(&args).unwrap();
-                svg_renderer.render(args.input.as_ref(), &args).unwrap(); */
+                println!("{costume}");
+                temp_sprite.costumes.push(Costume {
+                    centre_x: costume["rotationCenterX"].as_f64().unwrap(),
+                    centre_y: costume["rotationCenterY"].as_f64().unwrap(),
+                    data: None,
+                });
             }
+
+            /*match std::fs::read_dir(&temp_project.path) {
+                Ok(entries) => {
+                    // Iterate over the entries and print their names
+                    for entry in entries {
+                        match entry {
+                            Ok(dir_entry) => {
+                                let entry_path = dir_entry.path();
+                                let entry_name = entry_path.file_name().unwrap_or_default();
+                                println!("{}", entry_name.to_string_lossy());
+                            }
+                            Err(err) => eprintln!("Error reading directory entry: {}", err),
+                        }
+                    }
+                }
+                Err(err) => eprintln!("Error reading directory: {}", err),
+            }*/
 
             for (variable_hash, variable_data) in sprite["variables"].as_object().unwrap() {
                 variable_memory.push({

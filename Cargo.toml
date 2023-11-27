@@ -12,15 +12,15 @@ tempfile = "3.8.1"
 zip-extract = "0.1.2"
 
 # For SVG
-clap = { version = "4.1.4", features = ["derive"] }
-eyre = "0.6.8"
-color-eyre = "0.6.2"
+#clap = { version = "4.1.4", features = ["derive"] }
+#eyre = "0.6.8"
+#color-eyre = "0.6.2"
 usvg-text-layout = "0.29.0"
 usvg = "0.29.0"
 resvg = "0.29.0"
 tiny-skia = "0.8.3"
-log = "0.4.20"
-simple_logger = "4.2.0"
+#log = "0.4.20"
+#simple_logger = "4.2.0"
 
 [dependencies.sdl2]
 version = "0.36.0"

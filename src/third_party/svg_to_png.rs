@@ -1,201 +1,79 @@
-use std::path::{Path, PathBuf};
+/**
+ *  svg2colored-png, an svg to png converter
+ *  Copyright (C) 2023 MCorange<mcorangecodes@gmail.com>
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+/*
+ *  Massive thanks to this guy. You can find their SVG to PNG converter
+ *  which I modified, at: <https://github.com/MCorange99/svg2colored-png>
+ *  - Mrmayman
+*/
+use std::path::Path;
 
-use clap::builder::OsStr;
-use color_eyre::{eyre::bail, Result};
 use usvg_text_layout::TreeTextToPath;
 
-#[derive(Debug, Clone)]
-enum ColorType {
-    Array(Vec<String>),
-    Object(Vec<(String, String)>),
-    None,
-}
+pub fn render(
+    input: &Path,
+    output: &Path,
+    fontdb: &usvg_text_layout::fontdb::Database,
+) -> Result<(), String> {
+    // Check if the file is actually an SVG.
+    match input.extension() {
+        Some(e) if e.to_str() == Some("svg") => {}
+        Some(_) | None => return Err(format!("Filer {:?} is not of type SVG", input)),
+    };
 
-pub struct Args {
-    /// Input folder with the SVG's
-    pub input: PathBuf,
-
-    /// Output folder where the PNG's will be placed
-    pub output: PathBuf,
-
-    /// Comma seperated colors that will be used in HEX Eg. 000000,ffffff
-    /// Can be like an object: black:000000,white:ffffff
-    pub colors: String,
-
-    /// Width of the generated PNG's
-    pub width: u32,
-
-    /// Height of the generated PNG's
-    pub height: u32,
-}
-
-#[derive(Debug, Clone)]
-pub struct Renderer {
-    fontdb: usvg_text_layout::fontdb::Database,
-    colors: ColorType,
-    size: (u32, u32),
-    pub count: u64,
-}
-
-impl Renderer {
-    pub fn new(args: &Args) -> Result<Self> {
-        let mut db = usvg_text_layout::fontdb::Database::new();
-        db.load_system_fonts();
-
-        let mut this = Self {
-            fontdb: db,
-            colors: ColorType::None,
-            size: (args.width, args.height),
-            count: 0,
-        };
-
-        let colors = if args.colors.contains(':') {
-            //? object
-            let obj = args
-                .colors
-                .split(',')
-                .map(|s| {
-                    let s = s.split(':').collect::<Vec<&str>>();
-
-                    if s.len() < 2 {
-                        log::error!("Invalid color object, try checking help");
-                        return None;
-                    }
-
-                    Some((s[0].to_string(), s[1].to_string()))
-                })
-                .collect::<Vec<Option<(String, String)>>>();
-
-            let mut colors = Vec::new();
-
-            for c in obj {
-                if let Some(c) = c {
-                    std::fs::create_dir_all(args.output.join(&c.0))?;
-
-                    colors.push(c);
-                }
-            }
-
-            ColorType::Object(colors)
-        } else {
-            //? list
-            // let colors = args.colors.split(",").map(|s| {
-            //     s.to_string()
-            // })
-            // .collect::<Vec<String>>();
-
-            let mut colors = Vec::new();
-
-            for color in args.colors.split(',') {
-                std::fs::create_dir_all(args.output.join(&color))?;
-                colors.push(color.to_string())
-            }
-
-            ColorType::Array(colors)
-        };
-
-        this.colors = colors;
-        Ok(this)
+    // Check if output PNG already exists.
+    let fo: &Path = &output;
+    if fo.exists() {
+        return Err("File {fo:?} exists".to_string());
     }
 
-    pub fn render(&mut self, fi: &Path, args: &Args) -> Result<()> {
-        match fi.extension() {
-            Some(e) if e.to_str() == Some("svg") => {}
-            Some(_) | None => {
-                log::warn!("Filer {:?} is not of type SVG", fi);
-                // util::logger::warning(format!("File '{}' is not of SVG type", fi.clone().to_str().unwrap()));
-                bail!("Failed to render");
-            }
-        };
+    // Load SVG Data.
+    let svg = match std::fs::read_to_string(input) {
+        Ok(d) => d,
+        Err(_) => return Err("File {fi:?} does not exist".to_string()),
+    };
 
-        match self.colors.clone() {
-            ColorType::Array(c) => {
-                for color in c {
-                    log::info!("Rendering the color {color:?}");
-                    let fo = self.get_out_file(fi, &color, &args);
-                    self.render_one(fi, &fo, &color)?;
-                }
-            }
-            ColorType::Object(c) => {
-                for o in c {
-                    log::info!("Rendering the color {:?}", o);
-                    let fo = self.get_out_file(fi, &o.0, &args);
-                    self.render_one(fi, &fo, &o.1)?;
-                }
-            }
-            ColorType::None => unreachable!(),
-        }
+    // Setup USVG Options.
+    let mut opt = usvg::Options::default();
+    // Get file's absolute directory.
+    opt.resources_dir = std::fs::canonicalize(input)
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
 
-        Ok(())
-    }
+    // Build SVG Tree.
+    let mut tree = match usvg::Tree::from_data(svg.as_bytes(), &opt) {
+        Ok(v) => v,
+        Err(_) => return Err("Failed to parse {fi:?}".to_string()),
+    };
+    // Render text if needed.
+    tree.convert_text(&fontdb);
 
-    fn render_one(&mut self, fi: &Path, fo: &Path, color: &String) -> Result<()> {
-        if fo.exists() {
-            log::warn!("File {fo:?} exists, skipping");
-            return Ok(());
-        }
+    // Create Pixel Map to draw SVG to.
+    let mut pixmap = tiny_skia::Pixmap::new(200, 200).unwrap();
+    // Draw to Pixel Map.
+    resvg::render(
+        &tree,
+        usvg::FitTo::Size(200, 200),
+        tiny_skia::Transform::default(),
+        pixmap.as_mut(),
+    )
+    .expect("Could not render image from svg");
+    // Save Pixel Map to PNG.
+    pixmap.save_png(fo).expect("Could not save converted PNG");
 
-        let svg = self.set_color(&self.get_svg_data(fi)?, &color);
-
-        let mut opt = usvg::Options::default();
-        // Get file's absolute directory.
-        opt.resources_dir = std::fs::canonicalize(fi.clone())
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()));
-
-        let mut tree = match usvg::Tree::from_data(svg.as_bytes(), &opt) {
-            Ok(v) => v,
-            Err(_) => {
-                log::error!("Failed to parse {fi:?}");
-                bail!("");
-            }
-        };
-
-        tree.convert_text(&self.fontdb);
-
-        let mut pixmap = tiny_skia::Pixmap::new(self.size.0, self.size.1).unwrap();
-
-        log::info!("Rendering {fo:?}");
-
-        //? maybe handle this and possibly throw error if its none
-        let _ = resvg::render(
-            &tree,
-            usvg::FitTo::Size(self.size.0, self.size.1),
-            tiny_skia::Transform::default(),
-            pixmap.as_mut(),
-        );
-
-        pixmap.save_png(fo)?;
-        self.count += 1;
-        Ok(())
-    }
-
-    #[inline]
-    fn get_out_file(&mut self, fi: &Path, sub_folder: &String, args: &Args) -> PathBuf {
-        let mut fo: std::path::PathBuf = args.output.clone();
-        fo.push(sub_folder);
-        fo.push(
-            fi.file_name()
-                .unwrap_or(&OsStr::from("default"))
-                .to_str()
-                .unwrap_or("default")
-                .replace(".svg", ""),
-        );
-        fo.set_extension("png");
-        fo
-    }
-
-    fn set_color(&self, svg: &String, color: &String) -> String {
-        svg.replace("fill=\"currentColor\"", &format!("fill=\"#{}\"", color))
-    }
-
-    fn get_svg_data(&self, fi: &Path) -> Result<String> {
-        match std::fs::read_to_string(fi) {
-            Ok(d) => Ok(d),
-            Err(_) => {
-                log::error!("File {fi:?} does not exist");
-                bail!("File {fi:?} does not exist");
-            }
-        }
-    }
+    Ok(())
 }
