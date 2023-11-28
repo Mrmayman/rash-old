@@ -21,11 +21,13 @@ pub enum Instruction {
     FlowIfNotJumpToPlace(Value, String),
     MotionChangeX(Value),
     MotionChangeY(Value),
-    MotionGoTo(Value, Value),
+    MotionSetX(Value),
+    MotionSetY(Value),
+    LooksSetSize(Value),
 }
 
 impl Instruction {
-    pub fn print(&self, variables: &HashMap<String, usize>) -> String {
+    pub fn print(&self, variables: Option<&HashMap<String, usize>>) -> String {
         match &self {
             Instruction::MemoryStore(at, n) => {
                 format!("{} = {};", get_var(variables, at), n.print(variables))
@@ -104,7 +106,9 @@ impl Instruction {
             Instruction::FlowIfNotJumpToPlace(c, l) => format!("if !{c} goto {l}"),
             Instruction::MotionChangeX(n) => format!("change x by {n}"),
             Instruction::MotionChangeY(n) => format!("change y by {n}"),
-            Instruction::MotionGoTo(x, y) => format!("go to x: {x}, y: {y}"),
+            Instruction::MotionSetX(x) => format!("set x to {x}"),
+            Instruction::MotionSetY(y) => format!("set y to {y}"),
+            Instruction::LooksSetSize(size) => format!("set size to {size}"),
         }
     }
 }
@@ -118,15 +122,23 @@ fn find_key_by_value(map: &HashMap<String, usize>, target_value: usize) -> Optio
     None
 }
 
-pub fn get_var(variables: &HashMap<String, usize>, item: &Value) -> String {
-    let pointer: usize;
-    match &item {
-        Value::Pointer(n) => pointer = *n,
-        _ => panic!(),
-    }
-    match find_key_by_value(&variables, pointer) {
-        Some(key) => key.clone(),
-        None => panic!(),
+pub fn get_var(variables: Option<&HashMap<String, usize>>, item: &Value) -> String {
+    match variables {
+        Some(variables) => {
+            let pointer: usize;
+            match &item {
+                Value::Pointer(n) => pointer = *n,
+                _ => panic!(),
+            }
+            match find_key_by_value(&variables, pointer) {
+                Some(key) => key.clone(),
+                None => panic!(),
+            }
+        }
+        None => match &item {
+            Value::Pointer(n) => return n.to_string(),
+            _ => panic!(),
+        },
     }
 }
 
@@ -150,7 +162,7 @@ impl std::fmt::Display for Value {
 }
 
 impl Value {
-    pub fn print(&self, variables: &HashMap<String, usize>) -> String {
+    pub fn print(&self, variables: Option<&HashMap<String, usize>>) -> String {
         match &self {
             Value::Number(n) => format!("{}", n),
             Value::Boolean(n) => format!("{}", n),

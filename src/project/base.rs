@@ -47,6 +47,9 @@ impl<'a> Project<'a> {
         let mut variables: HashMap<String, usize> = HashMap::new();
         let mut variable_memory: Vec<Value> = vec![];
 
+        let mut db = usvg_text_layout::fontdb::Database::new();
+        db.load_system_fonts();
+
         for sprite in temp_project.json["targets"]
             .as_array()
             .expect("Malformed JSON - No \"targets\" list of sprites")
@@ -76,12 +79,13 @@ impl<'a> Project<'a> {
                 serde_json::to_string_pretty(&sprite).expect("Could not print project.json")
             );*/
 
-            let mut db = usvg_text_layout::fontdb::Database::new();
-            db.load_system_fonts();
+            let mut costume_names: Vec<String> = vec![];
 
             for costume in sprite["costumes"].as_array().unwrap() {
                 costume_convert_svg_to_png(costume, &temp_project, &db);
                 let texture = costume_load_png(texture_creator, &temp_project, costume);
+
+                costume_names.push(costume["name"].as_str().unwrap().to_string());
 
                 temp_sprite.costumes.push(Costume {
                     centre_x: costume["rotationCenterX"].as_f64().unwrap(),
@@ -90,23 +94,6 @@ impl<'a> Project<'a> {
                     name: costume["name"].as_str().unwrap().to_string(),
                 });
             }
-
-            /*match std::fs::read_dir(&temp_project.path) {
-                Ok(entries) => {
-                    // Iterate over the entries and print their names
-                    for entry in entries {
-                        match entry {
-                            Ok(dir_entry) => {
-                                let entry_path = dir_entry.path();
-                                let entry_name = entry_path.file_name().unwrap_or_default();
-                                println!("{}", entry_name.to_string_lossy());
-                            }
-                            Err(err) => eprintln!("Error reading directory entry: {}", err),
-                        }
-                    }
-                }
-                Err(err) => eprintln!("Error reading directory: {}", err),
-            }*/
 
             for (variable_hash, variable_data) in sprite["variables"].as_object().unwrap() {
                 variable_memory.push({
@@ -142,6 +129,7 @@ impl<'a> Project<'a> {
                         *block_data,
                         thread_number,
                         sprite,
+                        &costume_names,
                     ),
                     _ => {
                         eprintln!("[unimplemented hat block] {opcode}")
@@ -310,39 +298,66 @@ fn c_events_whenflagclicked(
     block_data: &serde_json::Value,
     thread_number: usize,
     sprite: &serde_json::Value,
+    costume_names: &Vec<String>,
 ) {
     let mut instructions: Vec<Instruction> = vec![];
     let mut current_block = (*block_data).clone();
 
-    let mut state = ParseState::new(variables, variable_memory, &mut instructions, thread_number);
+    let mut state = ParseState::new(
+        variables,
+        variable_memory,
+        &mut instructions,
+        thread_number,
+        sprite,
+        costume_names,
+    );
 
     while current_block["next"] != serde_json::Value::Null {
         let next = current_block["next"].as_str().unwrap();
-        current_block = get_block(next, &sprite).unwrap();
-        state.compile_block(&current_block, &sprite);
+        current_block = state.get_block(next).unwrap();
+        state.compile_block(&current_block);
     }
     instructions.push(Instruction::ThreadKill);
 
+    dump_instructions_and_variables(variables, variable_memory, &instructions);
+
+    temp_sprite
+        .threads
+        .push(Thread::new(instructions.into_boxed_slice()));
+}
+
+fn dump_instructions_and_variables(
+    variables: &mut HashMap<String, usize>,
+    variable_memory: &mut Vec<Value>,
+    instructions: &Vec<Instruction>,
+) {
     println!("[variable dump] {{");
     for (variable, i) in variables.iter() {
         println!("    {i}: {variable} ({})", variable_memory[*i]);
     }
     println!("}}");
     println!("[instruction dump] {{");
-    for instruction in &instructions {
-        println!("    {}", instruction.print(variables));
+    for instruction in instructions {
+        println!("    {}", instruction.print(Some(variables)));
     }
     println!("}}");
-    temp_sprite
-        .threads
-        .push(Thread::new(instructions.into_boxed_slice()));
 }
 
-pub fn get_block(next: &str, sprite: &serde_json::Value) -> Option<serde_json::Value> {
-    for (block_id, block_data) in sprite["blocks"].as_object().unwrap() {
-        if block_id == next {
-            return Some(block_data.clone());
+fn ls(path: &std::path::Path) {
+    match std::fs::read_dir(path) {
+        Ok(entries) => {
+            // Iterate over the entries and print their names
+            for entry in entries {
+                match entry {
+                    Ok(dir_entry) => {
+                        let entry_path = dir_entry.path();
+                        let entry_name = entry_path.file_name().unwrap_or_default();
+                        println!("{}", entry_name.to_string_lossy());
+                    }
+                    Err(err) => eprintln!("Error reading directory entry: {}", err),
+                }
+            }
         }
+        Err(err) => eprintln!("Error reading directory: {}", err),
     }
-    None
 }

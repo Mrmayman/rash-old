@@ -1,17 +1,10 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::{
-        base::{get_block, BlockResult},
-        state::ParseState,
-    },
+    project::{base::BlockResult, state::ParseState},
 };
 
 impl<'a> ParseState<'a> {
-    pub fn c_variables_set(
-        &mut self,
-        current_block: &serde_json::Value,
-        sprite: &serde_json::Value,
-    ) -> BlockResult {
+    pub fn c_variables_set(&mut self, current_block: &serde_json::Value) -> BlockResult {
         // Get the internal name of the variable.
         let var_name = current_block["fields"]["VARIABLE"].as_array().unwrap()[1]
             .as_str()
@@ -25,8 +18,8 @@ impl<'a> ParseState<'a> {
         match &current_block["inputs"]["VALUE"].as_array().unwrap()[1] {
             // If we are setting the variable to the output of another block (expression/function).
             serde_json::Value::String(s) => {
-                let block = get_block(s, sprite).unwrap();
-                let result = self.compile_block(&block, sprite);
+                let block = self.get_block(s).unwrap();
+                let result = self.compile_block(&block);
                 match &result {
                     crate::project::base::BlockResult::Nothing => {
                         eprintln!(

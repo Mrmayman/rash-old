@@ -21,10 +21,10 @@ impl Thread {
     pub fn run(&mut self, memory: &mut [Value], properties: &mut GraphicalProperties) {
         loop {
             let should_break: bool = self.run_bytecode(memory, properties);
+            self.counter += 1;
             if should_break {
                 break;
             }
-            self.counter += 1;
         }
     }
 
@@ -44,10 +44,12 @@ impl Thread {
     }
 
     fn run_bytecode(&mut self, memory: &mut [Value], properties: &mut GraphicalProperties) -> bool {
+        // println!("{}", self.instructions[self.counter].print(None));
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {
-                println!("Memory dump");
+                println!("[memory dump] {{");
                 dump_memory(memory);
+                println!("}}")
             }
             Instruction::MemoryStore(location, value) => {
                 let location = location.get_pointer();
@@ -165,12 +167,13 @@ impl Thread {
                 }
             }
             Instruction::FlowDefinePlace(_) => {}
-            Instruction::MotionChangeX(n) => properties.x += n.get_number(memory),
-            Instruction::MotionChangeY(n) => properties.y += n.get_number(memory),
-            Instruction::MotionGoTo(x, y) => {
-                properties.x = x.get_number(memory);
-                properties.y = y.get_number(memory);
+            Instruction::MotionChangeX(n) => {
+                properties.x += n.get_number(memory);
             }
+            Instruction::MotionChangeY(n) => properties.y += n.get_number(memory),
+            Instruction::MotionSetX(x) => properties.x = x.get_number(memory),
+            Instruction::MotionSetY(y) => properties.y = y.get_number(memory),
+            Instruction::LooksSetSize(size) => properties.size = size.get_number(memory) as f32,
         }
         false
     }
@@ -180,16 +183,16 @@ fn dump_memory(memory: &[Value]) {
     for val in memory {
         match val {
             Value::Pointer(n) => {
-                println!("pointer: {}", n)
+                println!("    pointer: {}", n)
             }
             Value::Number(n) => {
-                println!("number: {}", n)
+                println!("    number: {}", n)
             }
             Value::Boolean(n) => {
-                println!("bool: {}", n)
+                println!("    bool: {}", n)
             }
             Value::String(n) => {
-                println!("string: {}", n)
+                println!("    string: {}", n)
             }
         }
     }

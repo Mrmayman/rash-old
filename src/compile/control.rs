@@ -1,17 +1,10 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::{
-        base::{get_block, BlockResult},
-        state::ParseState,
-    },
+    project::{base::BlockResult, state::ParseState},
 };
 
 impl<'a> ParseState<'a> {
-    pub fn c_control_forever(
-        &mut self,
-        current_block: &serde_json::Value,
-        sprite: &serde_json::Value,
-    ) -> BlockResult {
+    pub fn c_control_forever(&mut self, current_block: &serde_json::Value) -> BlockResult {
         self.forever_nest += 1;
         self.instructions.push(Instruction::ThreadPause);
         self.instructions.push(Instruction::FlowDefinePlace(format!(
@@ -19,7 +12,7 @@ impl<'a> ParseState<'a> {
             self.forever_nest
         )));
         if !current_block["inputs"].as_object().unwrap().is_empty() {
-            self.compile_substack(current_block, sprite);
+            self.compile_substack(current_block);
         }
         self.instructions.push(Instruction::ThreadPause);
         self.instructions.push(Instruction::FlowIfJumpToPlace(
@@ -31,11 +24,7 @@ impl<'a> ParseState<'a> {
         BlockResult::Nothing
     }
 
-    pub fn c_control_if(
-        &mut self,
-        current_block: &serde_json::Value,
-        sprite: &serde_json::Value,
-    ) -> BlockResult {
+    pub fn c_control_if(&mut self, current_block: &serde_json::Value) -> BlockResult {
         // If no condition and blocks. Example:
         /* if() {} */
         if current_block["inputs"].as_object().unwrap().is_empty() {
@@ -53,14 +42,14 @@ impl<'a> ParseState<'a> {
         if current_block["inputs"]["CONDITION"] == serde_json::Value::Null {
             return BlockResult::Nothing;
         }
-        let condition = get_block(
-            current_block["inputs"]["CONDITION"].as_array().unwrap()[1]
-                .as_str()
-                .unwrap(),
-            sprite,
-        )
-        .unwrap();
-        let result = self.compile_block(&condition, sprite);
+        let condition = self
+            .get_block(
+                current_block["inputs"]["CONDITION"].as_array().unwrap()[1]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+        let result = self.compile_block(&condition);
 
         match &result {
             crate::project::base::BlockResult::Nothing => {
@@ -75,7 +64,7 @@ impl<'a> ParseState<'a> {
                     Value::Pointer(self.register_get_variable_id(*n)),
                     format!("if{}", self.if_jump_number),
                 ));
-                self.compile_substack(current_block, sprite);
+                self.compile_substack(current_block);
                 self.instructions.push(Instruction::FlowDefinePlace(format!(
                     "if{}",
                     self.if_jump_number

@@ -1,9 +1,6 @@
 use crate::interpreter::{Instruction, Value};
 
-use super::{
-    base::{get_block, BlockResult},
-    state::ParseState,
-};
+use super::{base::BlockResult, state::ParseState};
 
 impl<'a> ParseState<'a> {
     pub fn register_malloc(&mut self) -> usize {
@@ -45,12 +42,11 @@ impl<'a> ParseState<'a> {
         current_block: &serde_json::Value,
         register: usize,
         input: &str,
-        sprite: &serde_json::Value,
     ) {
         match &current_block["inputs"][input].as_array().unwrap()[1] {
             serde_json::Value::String(n) => {
-                let block = get_block(n.as_str(), sprite).unwrap();
-                match self.compile_block(&block, sprite) {
+                let block = self.get_block(n.as_str()).unwrap();
+                match self.compile_block(&block) {
                     BlockResult::Nothing => panic!(),
                     BlockResult::AllocatedMemory(n) => {
                         self.instructions.push(Instruction::MemoryStore(
