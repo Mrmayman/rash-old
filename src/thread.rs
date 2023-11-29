@@ -1,6 +1,6 @@
 use crate::{
     interpreter::{Instruction, Value},
-    sprite::GraphicalProperties,
+    sprite::{Costume, GraphicalProperties},
 };
 
 pub struct Thread {
@@ -9,7 +9,7 @@ pub struct Thread {
     counter: usize,
 }
 
-impl Thread {
+impl<'a> Thread {
     pub fn new(instructions: Box<[Instruction]>) -> Thread {
         Thread {
             instructions,
@@ -18,9 +18,14 @@ impl Thread {
         }
     }
 
-    pub fn run(&mut self, memory: &mut [Value], properties: &mut GraphicalProperties) {
+    pub fn run(
+        &mut self,
+        memory: &mut [Value],
+        properties: &mut GraphicalProperties,
+        costumes: &Vec<Costume<'a>>,
+    ) {
         loop {
-            let should_break: bool = self.run_bytecode(memory, properties);
+            let should_break: bool = self.run_bytecode(memory, properties, costumes);
             self.counter += 1;
             if should_break {
                 break;
@@ -43,8 +48,12 @@ impl Thread {
         None
     }
 
-    fn run_bytecode(&mut self, memory: &mut [Value], properties: &mut GraphicalProperties) -> bool {
-        // println!("{}", self.instructions[self.counter].print(None));
+    fn run_bytecode(
+        &mut self,
+        memory: &mut [Value],
+        properties: &mut GraphicalProperties,
+        costumes: &Vec<Costume<'a>>,
+    ) -> bool {
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {
                 println!("[memory dump] {{");
@@ -174,6 +183,29 @@ impl Thread {
             Instruction::MotionSetX(x) => properties.x = x.get_number(memory),
             Instruction::MotionSetY(y) => properties.y = y.get_number(memory),
             Instruction::LooksSetSize(size) => properties.size = size.get_number(memory) as f32,
+            Instruction::LooksSetCostume(costume_val) => {
+                let costume_name = costume_val.get_string(memory);
+                match costumes
+                    .iter()
+                    .position(|costume| costume.name == costume_name)
+                {
+                    Some(n) => {
+                        properties.costume_number = n;
+                        // println!("costume name: {}", properties.costume_number);
+                    }
+                    None => {
+                        let number_of_costumes = costumes.len() as i32;
+                        let costume_number = costume_val.get_number(memory) as i32;
+                        properties.costume_number =
+                            ((costume_number - 1).rem_euclid(number_of_costumes)) as usize;
+                        // println!("costume number: {}", properties.costume_number)
+                    }
+                }
+            }
+            Instruction::LooksGetCostumeNumber(location) => {
+                memory[location.get_pointer()] =
+                    Value::Number(properties.costume_number as f64 + 1.0);
+            }
         }
         false
     }

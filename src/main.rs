@@ -77,7 +77,7 @@ fn main() {
 
         let elapsed = last_frame_time.elapsed();
         last_frame_time = std::time::Instant::now();
-        let frame_time = std::time::Duration::from_secs_f64(1.0 / 20.0);
+        let frame_time = std::time::Duration::from_secs_f64(1.0 / 30.0);
         // println!("{:?}", elapsed);
 
         if elapsed < frame_time {

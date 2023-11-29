@@ -24,6 +24,8 @@ pub enum Instruction {
     MotionSetX(Value),
     MotionSetY(Value),
     LooksSetSize(Value),
+    LooksSetCostume(Value),
+    LooksGetCostumeNumber(Value),
 }
 
 impl Instruction {
@@ -109,6 +111,10 @@ impl Instruction {
             Instruction::MotionSetX(x) => format!("set x to {x}"),
             Instruction::MotionSetY(y) => format!("set y to {y}"),
             Instruction::LooksSetSize(size) => format!("set size to {size}"),
+            Instruction::LooksSetCostume(costume) => format!("set costume to {costume}"),
+            Instruction::LooksGetCostumeNumber(location) => {
+                format!("{} = get_costume_number()", get_var(variables, location))
+            }
         }
     }
 }
@@ -136,7 +142,7 @@ pub fn get_var(variables: Option<&HashMap<String, usize>>, item: &Value) -> Stri
             }
         }
         None => match &item {
-            Value::Pointer(n) => return n.to_string(),
+            Value::Pointer(n) => return "*".to_owned() + &n.to_string(),
             _ => panic!(),
         },
     }
@@ -214,6 +220,21 @@ impl Value {
                 return false;
             }
             Value::Pointer(n) => memory[*n].get_bool(memory),
+        }
+    }
+
+    pub fn get_string(&self, memory: &[Value]) -> String {
+        match self {
+            Value::Number(n) => n.to_string(),
+            Value::Boolean(n) => {
+                if *n {
+                    return "true".to_string();
+                } else {
+                    return "false".to_string();
+                }
+            }
+            Value::String(n) => n.clone(),
+            Value::Pointer(n) => memory[*n].get_string(memory),
         }
     }
 }

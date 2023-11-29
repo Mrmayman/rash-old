@@ -48,7 +48,7 @@ impl<'a> Sprite<'a> {
         let mut i = 0;
         while i < self.threads.len() {
             let thread = &mut self.threads[i];
-            thread.run(memory, &mut self.graphical_properties);
+            thread.run(memory, &mut self.graphical_properties, &self.costumes);
 
             if thread.killed {
                 self.threads.remove(i);

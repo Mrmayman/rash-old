@@ -58,7 +58,8 @@ impl<'a> ParseState<'a> {
             "motion_setx" => self.c_motion_set_x(current_block),
             "motion_sety" => self.c_motion_set_y(current_block),
             "looks_setsizeto" => self.c_looks_set_size(current_block),
-            // "looks_switchcostumeto" => self.c_looks_switch_costume(current_block),
+            "looks_switchcostumeto" => self.c_looks_switch_costume(current_block),
+            "looks_costumenumbername" => self.c_looks_get_costume(current_block),
             _ => {
                 eprintln!("[unimplemented block] {opcode}");
                 BlockResult::Nothing
@@ -81,7 +82,6 @@ impl<'a> ParseState<'a> {
     }
 
     pub fn input_get_number(&mut self, current_block: &serde_json::Value, name: &str) -> Value {
-        let input_1: Value;
         let input_1_data = current_block["inputs"][name].as_array().unwrap();
 
         // Deal with 2 different cases:

@@ -47,7 +47,16 @@ impl<'a> ParseState<'a> {
             serde_json::Value::String(n) => {
                 let block = self.get_block(n.as_str()).unwrap();
                 match self.compile_block(&block) {
-                    BlockResult::Nothing => panic!(),
+                    BlockResult::Nothing => {
+                        Instruction::MemoryStore(
+                            Value::Pointer(self.register_get_variable_id(register)),
+                            Value::Number(0.0),
+                        );
+                        eprintln!(
+                            "[unimplemented block] {} (inside expression)",
+                            block["opcode"].as_str().unwrap()
+                        );
+                    }
                     BlockResult::AllocatedMemory(n) => {
                         self.instructions.push(Instruction::MemoryStore(
                             Value::Pointer(self.register_get_variable_id(register)),
