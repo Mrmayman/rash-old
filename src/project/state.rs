@@ -14,7 +14,6 @@ pub struct ParseState<'a> {
     pub temp_variables: Vec<bool>,
     pub thread_number: usize,
     pub sprite: &'a serde_json::Value,
-    pub costume_names: &'a Vec<String>,
 }
 
 impl<'a> ParseState<'a> {
@@ -24,7 +23,6 @@ impl<'a> ParseState<'a> {
         instructions: &'a mut Vec<Instruction>,
         thread_number: usize,
         sprite: &'a serde_json::Value,
-        costume_names: &'a Vec<String>,
     ) -> ParseState<'a> {
         ParseState {
             variables,
@@ -35,7 +33,6 @@ impl<'a> ParseState<'a> {
             temp_variables: vec![],
             thread_number,
             sprite,
-            costume_names,
         }
     }
     pub fn compile_block(&mut self, current_block: &serde_json::Value) -> BlockResult {
@@ -57,6 +54,8 @@ impl<'a> ParseState<'a> {
             "motion_changeyby" => self.c_motion_change_y(current_block),
             "motion_setx" => self.c_motion_set_x(current_block),
             "motion_sety" => self.c_motion_set_y(current_block),
+            "motion_xposition" => self.c_motion_get_x(),
+            "motion_yposition" => self.c_motion_get_y(),
             "looks_setsizeto" => self.c_looks_set_size(current_block),
             "looks_switchcostumeto" => self.c_looks_switch_costume(current_block),
             "looks_costumenumbername" => self.c_looks_get_costume(current_block),
@@ -119,10 +118,10 @@ impl<'a> ParseState<'a> {
         }
     }
 
-    fn input_number_deal_with_block_output(&mut self, block_id: &String) -> Value {
+    fn input_number_deal_with_block_output(&mut self, block_id: &str) -> Value {
         // Get the input block.
         // set var to (1 + 1): Here the input block would be the plus operator.
-        let input_block = self.get_block(&block_id.as_str()).unwrap();
+        let input_block = self.get_block(block_id).unwrap();
 
         // Try to compile the block
         match self.compile_block(&input_block) {

@@ -23,6 +23,8 @@ pub enum Instruction {
     MotionChangeY(Value),
     MotionSetX(Value),
     MotionSetY(Value),
+    MotionGetX(Value),
+    MotionGetY(Value),
     LooksSetSize(Value),
     LooksSetCostume(Value),
     LooksGetCostumeNumber(Value),
@@ -34,9 +36,9 @@ impl Instruction {
             Instruction::MemoryStore(at, n) => {
                 format!("{} = {};", get_var(variables, at), n.print(variables))
             }
-            Instruction::MemoryDump => format!("std::dumpMemory();"),
-            Instruction::ThreadKill => format!("return;"),
-            Instruction::ThreadPause => format!("std::renderFrame()"),
+            Instruction::MemoryDump => "std::dumpMemory();".to_string(),
+            Instruction::ThreadKill => "return;".to_string(),
+            Instruction::ThreadPause => "std::renderFrame()".to_string(),
             Instruction::OperatorModulo(l, a, b) => {
                 format!(
                     "{} = {} % {}",
@@ -101,20 +103,40 @@ impl Instruction {
                     get_var(variables, b)
                 )
             }
-            Instruction::FlowIfJump(c, l) => format!("if {c} jump to {l}"),
-            Instruction::FlowIfJumpToPlace(c, l) => format!("if {c} goto {l}"),
-            Instruction::FlowDefinePlace(p) => format!("{p}:"),
-            Instruction::FlowIfNotJump(c, l) => format!("if !{c} jump to {l}"),
-            Instruction::FlowIfNotJumpToPlace(c, l) => format!("if !{c} goto {l}"),
-            Instruction::MotionChangeX(n) => format!("change x by {n}"),
-            Instruction::MotionChangeY(n) => format!("change y by {n}"),
-            Instruction::MotionSetX(x) => format!("set x to {x}"),
-            Instruction::MotionSetY(y) => format!("set y to {y}"),
-            Instruction::LooksSetSize(size) => format!("set size to {size}"),
-            Instruction::LooksSetCostume(costume) => format!("set costume to {costume}"),
-            Instruction::LooksGetCostumeNumber(location) => {
-                format!("{} = get_costume_number()", get_var(variables, location))
+            Instruction::FlowIfJump(condition, l) => {
+                format!(
+                    "if {} jump to {}",
+                    condition.print(variables),
+                    l.print(variables)
+                )
             }
+            Instruction::FlowIfJumpToPlace(condition, l) => {
+                format!("if {} goto {l}", condition.print(variables))
+            }
+            Instruction::FlowDefinePlace(place) => format!("{place}:"),
+            Instruction::FlowIfNotJump(condition, location) => {
+                format!(
+                    "if !{} jump to {}",
+                    condition.print(variables),
+                    location.print(variables)
+                )
+            }
+            Instruction::FlowIfNotJumpToPlace(condition, location) => {
+                format!("if !{} goto {location}", condition.print(variables))
+            }
+            Instruction::MotionChangeX(x) => format!("change x by {}", x.print(variables)),
+            Instruction::MotionChangeY(y) => format!("change y by {}", y.print(variables)),
+            Instruction::MotionSetX(x) => format!("set x to {}", x.print(variables)),
+            Instruction::MotionSetY(y) => format!("set y to {}", y.print(variables)),
+            Instruction::LooksSetSize(size) => format!("set size to {}", size.print(variables)),
+            Instruction::LooksSetCostume(costume) => {
+                format!("set costume to {}", costume.print(variables))
+            }
+            Instruction::LooksGetCostumeNumber(location) => {
+                format!("{} = get_costume_number()", location.print(variables))
+            }
+            Instruction::MotionGetX(location) => format!("{} = get_x()", location.print(variables)),
+            Instruction::MotionGetY(location) => format!("{} = get_y()", location.print(variables)),
         }
     }
 }
@@ -131,18 +153,14 @@ fn find_key_by_value(map: &HashMap<String, usize>, target_value: usize) -> Optio
 pub fn get_var(variables: Option<&HashMap<String, usize>>, item: &Value) -> String {
     match variables {
         Some(variables) => {
-            let pointer: usize;
-            match &item {
-                Value::Pointer(n) => pointer = *n,
-                _ => panic!(),
-            }
-            match find_key_by_value(&variables, pointer) {
+            let pointer: usize = item.get_pointer();
+            match find_key_by_value(variables, pointer) {
                 Some(key) => key.clone(),
                 None => panic!(),
             }
         }
         None => match &item {
-            Value::Pointer(n) => return "*".to_owned() + &n.to_string(),
+            Value::Pointer(n) => "*".to_owned() + &n.to_string(),
             _ => panic!(),
         },
     }
@@ -156,7 +174,7 @@ pub enum Value {
     Pointer(usize),
 }
 
-impl std::fmt::Display for Value {
+/*impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             Value::Number(n) => write!(f, "{}", n),
@@ -165,7 +183,7 @@ impl std::fmt::Display for Value {
             Value::Pointer(n) => write!(f, "*{}", n),
         }
     }
-}
+}*/
 
 impl Value {
     pub fn print(&self, variables: Option<&HashMap<String, usize>>) -> String {
@@ -173,7 +191,7 @@ impl Value {
             Value::Number(n) => format!("{}", n),
             Value::Boolean(n) => format!("{}", n),
             Value::String(n) => format!("\"{}\"", n),
-            Value::Pointer(n) => format!("{}", get_var(variables, &Value::Pointer(*n))),
+            Value::Pointer(n) => format!("*{}", get_var(variables, &Value::Pointer(*n))),
         }
     }
 
@@ -209,15 +227,12 @@ impl Value {
                 if n == "true" {
                     return true;
                 }
-                match n.parse::<f64>() {
-                    Ok(number) => {
-                        if number == 1.0 {
-                            return true;
-                        }
+                if let Ok(number) = n.parse::<f64>() {
+                    if number == 1.0 {
+                        return true;
                     }
-                    Err(_) => {}
                 }
-                return false;
+                false
             }
             Value::Pointer(n) => memory[*n].get_bool(memory),
         }
@@ -228,9 +243,9 @@ impl Value {
             Value::Number(n) => n.to_string(),
             Value::Boolean(n) => {
                 if *n {
-                    return "true".to_string();
+                    "true".to_string()
                 } else {
-                    return "false".to_string();
+                    "false".to_string()
                 }
             }
             Value::String(n) => n.clone(),

@@ -21,7 +21,6 @@ use serde::Deserialize;
  *  which I modified, at: <https://github.com/MCorange99/svg2colored-png>
  *  - Mrmayman
 */
-use serde_xml_rs::from_str;
 
 #[derive(Debug, Deserialize)]
 struct Svg {
@@ -49,7 +48,7 @@ pub fn render(
     };
 
     // Check if output PNG already exists.
-    let fo: &Path = &output;
+    let fo: &Path = output;
 
     // Load SVG Data.
     let svg = match std::fs::read_to_string(input) {
@@ -65,11 +64,13 @@ pub fn render(
     }
 
     // Setup USVG Options.
-    let mut opt = usvg::Options::default();
-    // Get file's absolute directory.
-    opt.resources_dir = std::fs::canonicalize(input)
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let opt = usvg::Options {
+        // Get file's absolute directory.
+        resources_dir: std::fs::canonicalize(input)
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf())),
+        ..Default::default()
+    };
 
     // Build SVG Tree.
     let mut tree = match usvg::Tree::from_data(svg.as_bytes(), &opt) {
@@ -77,7 +78,7 @@ pub fn render(
         Err(_) => return Err(format!("Failed to parse {} {svg}", input.to_string_lossy())),
     };
     // Render text if needed.
-    tree.convert_text(&fontdb);
+    tree.convert_text(fontdb);
 
     // Create Pixel Map to draw SVG to.
     let mut pixmap =

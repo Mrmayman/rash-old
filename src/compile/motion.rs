@@ -37,6 +37,24 @@ impl<'a> ParseState<'a> {
         self.instructions.push(Instruction::MotionChangeY(input));
         BlockResult::Nothing
     }
+
+    pub fn c_motion_get_x(&mut self) -> BlockResult {
+        let register = self.register_malloc();
+        self.instructions
+            .push(Instruction::MotionGetX(Value::Pointer(
+                self.register_get_variable_id(register),
+            )));
+        BlockResult::AllocatedMemory(register)
+    }
+
+    pub fn c_motion_get_y(&mut self) -> BlockResult {
+        let register = self.register_malloc();
+        self.instructions
+            .push(Instruction::MotionGetY(Value::Pointer(
+                self.register_get_variable_id(register),
+            )));
+        BlockResult::AllocatedMemory(register)
+    }
 }
 
 /*fn get_input() {

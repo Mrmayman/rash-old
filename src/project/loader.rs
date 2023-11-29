@@ -3,8 +3,8 @@ use std::io::Read;
 use super::base::Project;
 
 impl<'a> Project<'a> {
-    pub fn parse(path: &std::path::PathBuf) -> serde_json::Value {
-        let mut file = std::fs::File::open(&path.join("project.json"))
+    pub fn parse(path: &std::path::Path) -> serde_json::Value {
+        let mut file = std::fs::File::open(path.join("project.json"))
             .expect("Could not open project.json file");
         let mut content = String::new();
         file.read_to_string(&mut content)
@@ -32,7 +32,7 @@ impl<'a> Project<'a> {
         let temp_dir_path: std::path::PathBuf = temp_dir.path().to_path_buf();
 
         let archive: Vec<u8> =
-            Project::read_file_to_bytes(&file_path.as_str()).expect("Could not read .sb3 file");
+            Project::read_file_to_bytes(file_path.as_str()).expect("Could not read .sb3 file");
         let target_dir = std::path::PathBuf::from(&temp_dir_path);
         // Doesn't need to exist
 

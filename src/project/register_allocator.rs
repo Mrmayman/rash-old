@@ -5,7 +5,7 @@ use super::{base::BlockResult, state::ParseState};
 impl<'a> ParseState<'a> {
     pub fn register_malloc(&mut self) -> usize {
         let index = {
-            if let Some(index) = self.temp_variables.iter().position(|&x| x == false) {
+            if let Some(index) = self.temp_variables.iter().position(|&x| !x) {
                 // There is an unallocated register, so allocate to it.
                 self.temp_variables[index] = true;
                 index
@@ -19,9 +19,8 @@ impl<'a> ParseState<'a> {
         let var_number = self.variables.len();
 
         let temp_var_name = format!("thread{}tempvar{}", self.thread_number, index);
-        if !self.variables.contains_key(&temp_var_name) {
-            self.variables.insert(temp_var_name, var_number);
-        }
+        // If temp_var_name doesn't exist, add it.
+        self.variables.entry(temp_var_name).or_insert(var_number);
         self.variable_data.push(Value::Number(0.0));
         index
     }
@@ -48,10 +47,10 @@ impl<'a> ParseState<'a> {
                 let block = self.get_block(n.as_str()).unwrap();
                 match self.compile_block(&block) {
                     BlockResult::Nothing => {
-                        Instruction::MemoryStore(
+                        self.instructions.push(Instruction::MemoryStore(
                             Value::Pointer(self.register_get_variable_id(register)),
                             Value::Number(0.0),
-                        );
+                        ));
                         eprintln!(
                             "[unimplemented block] {} (inside expression)",
                             block["opcode"].as_str().unwrap()

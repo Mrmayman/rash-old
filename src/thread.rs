@@ -35,14 +35,10 @@ impl<'a> Thread {
 
     fn get_place(&self, string: &String) -> Option<usize> {
         for (index, item) in self.instructions.iter().enumerate() {
-            match item {
-                Instruction::FlowDefinePlace(n) => {
-                    if n == string {
-                        return Some(index);
-                    }
+            if let Instruction::FlowDefinePlace(n) = item {
+                if n == string {
+                    return Some(index);
                 }
-                // Handle other variants if needed
-                _ => {}
             }
         }
         None
@@ -169,9 +165,9 @@ impl<'a> Thread {
             }
             Instruction::FlowIfNotJumpToPlace(condition, place) => {
                 if !condition.get_bool(memory) {
-                    let location = self
-                        .get_place(place)
-                        .expect(format!("Could not find jump point in program {}", place).as_str());
+                    let location = self.get_place(place).unwrap_or_else(|| {
+                        panic!("Could not find jump point in program {}", place)
+                    });
                     self.counter = location;
                 }
             }
@@ -205,6 +201,12 @@ impl<'a> Thread {
             Instruction::LooksGetCostumeNumber(location) => {
                 memory[location.get_pointer()] =
                     Value::Number(properties.costume_number as f64 + 1.0);
+            }
+            Instruction::MotionGetX(location) => {
+                memory[location.get_pointer()] = Value::Number(properties.x)
+            }
+            Instruction::MotionGetY(location) => {
+                memory[location.get_pointer()] = Value::Number(properties.y)
             }
         }
         false

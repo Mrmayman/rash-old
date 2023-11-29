@@ -10,7 +10,7 @@ impl<'a> ParseState<'a> {
             .as_str()
             .unwrap();
         // Get the id of the variable in the Rash VM.
-        let id = self.variables.get(var_name).unwrap().clone();
+        let id: usize = *self.variables.get(var_name).unwrap();
 
         // Deal with 2 different cases:
         // 1) literal: set var to "1"

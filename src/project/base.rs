@@ -54,101 +54,43 @@ impl<'a> Project<'a> {
             .as_array()
             .expect("Malformed JSON - No \"targets\" list of sprites")
         {
-            let mut temp_sprite = Sprite::new(
-                sprite["name"].as_str().unwrap().to_string(),
-                if sprite["isStage"].as_bool().unwrap() {
-                    Default::default()
-                } else {
-                    GraphicalProperties {
-                        x: sprite["x"].as_f64().unwrap(),
-                        y: sprite["y"].as_f64().unwrap(),
-                        direction: sprite["direction"].as_f64().unwrap() as f32,
-                        size: sprite["size"].as_f64().unwrap() as f32,
-                        costume_number: 0,
-                    }
-                },
+            println!("[info] started compiling sprite {}", sprite["name"]);
+
+            // Create the sprite
+            let mut temp_sprite = Project::sprite_create_from_json(sprite);
+
+            // Load sprite costumes
+            Project::sprite_costume_load(
+                sprite,
+                &temp_project,
+                &db,
+                texture_creator,
+                &mut temp_sprite,
             );
 
-            println!(
-                "[info] started compiling sprite {}",
-                sprite["name"].as_str().unwrap()
+            // Load variables
+            Project::sprite_load_variables(sprite, &mut variable_memory, &mut variables);
+
+            let orphans = Project::sprite_find_hat_blocks(sprite);
+
+            Project::compile_hat_blocks(
+                orphans,
+                &mut variables,
+                &mut variable_memory,
+                &mut temp_sprite,
+                sprite,
             );
-
-            /*println!(
-                "{}",
-                serde_json::to_string_pretty(&sprite).expect("Could not print project.json")
-            );*/
-
-            let mut costume_names: Vec<String> = vec![];
-
-            for costume in sprite["costumes"].as_array().unwrap() {
-                costume_convert_svg_to_png(costume, &temp_project, &db);
-                let texture = costume_load_png(texture_creator, &temp_project, costume);
-
-                costume_names.push(costume["name"].as_str().unwrap().to_string());
-
-                temp_sprite.costumes.push(Costume {
-                    centre_x: costume["rotationCenterX"].as_f64().unwrap(),
-                    centre_y: costume["rotationCenterY"].as_f64().unwrap(),
-                    data: texture,
-                    name: costume["name"].as_str().unwrap().to_string(),
-                });
-            }
-
-            for (variable_hash, variable_data) in sprite["variables"].as_object().unwrap() {
-                variable_memory.push({
-                    match &variable_data.as_array().unwrap()[1] {
-                        serde_json::Value::Bool(n) => Value::Boolean(*n),
-                        serde_json::Value::Number(n) => Value::Number(n.as_f64().unwrap()),
-                        serde_json::Value::String(n) => Value::String(n.clone()),
-                        _ => panic!(),
-                    }
-                });
-                variables.insert(variable_hash.clone(), variable_memory.len() - 1);
-            }
-
-            let mut orphans: Vec<(&String, &serde_json::Value)> = vec![];
-
-            for (block_id, block_data) in sprite["blocks"].as_object().unwrap() {
-                if block_data.is_array() {
-                    eprintln!("[unimplemented] block is an array");
-                    break;
-                }
-                if block_data["parent"] == serde_json::Value::Null {
-                    orphans.push((block_id, block_data));
-                }
-            }
-
-            for (thread_number, (_, block_data)) in orphans.iter().enumerate() {
-                let opcode = block_data["opcode"].as_str().unwrap();
-                match opcode {
-                    "event_whenflagclicked" => c_events_whenflagclicked(
-                        &mut variables,
-                        &mut variable_memory,
-                        &mut temp_sprite,
-                        *block_data,
-                        thread_number,
-                        sprite,
-                        &costume_names,
-                    ),
-                    _ => {
-                        eprintln!("[unimplemented hat block] {opcode}")
-                    }
-                }
-            }
 
             temp_project.sprites.push(temp_sprite);
         }
 
-        // temp_project.malloc(variables.len());
+        // Allocate enough memory for the variables.
         temp_project.memory = variable_memory.into_boxed_slice();
-
-        // temp_project._load_pi_project();
 
         Ok(temp_project)
     }
 
-    fn _load_pi_project(&mut self) {
+    /*fn _load_pi_project(&mut self) {
         self.sprites
             .push(Sprite::new("Sprite1".to_string(), Default::default()));
         self.sprites[0].threads.push(Thread::new(
@@ -204,12 +146,16 @@ impl<'a> Project<'a> {
 
     pub fn _malloc(&mut self, size: usize) {
         self.memory = vec![Value::Number(0.0); size].into_boxed_slice();
-    }
+    }*/
 
     pub fn run(&mut self) {
         for sprite in &mut self.sprites {
             sprite.run(&mut self.memory);
         }
+    }
+
+    pub fn _print_pretty(value: &serde_json::Value) -> String {
+        serde_json::to_string_pretty(&value).expect("Could not print project.json")
     }
 
     pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
@@ -233,7 +179,7 @@ impl<'a> Project<'a> {
             sprite_x *= size_difference_f64;
             sprite_y *= size_difference_f64;
 
-            sprite_x = sprite_x + canvas_width as f64 / 2.0;
+            sprite_x += canvas_width as f64 / 2.0;
             sprite_y = (canvas_height as f64 / 2.0) - sprite_y;
 
             let rect = sdl2::rect::Rect::new(
@@ -245,6 +191,102 @@ impl<'a> Project<'a> {
             canvas.copy(&current_costume.data, None, rect).unwrap();
         }
     }
+
+    pub fn sprite_create_from_json(sprite: &serde_json::Value) -> Sprite<'a> {
+        let temp_sprite = Sprite::new(
+            sprite["name"].as_str().unwrap().to_string(),
+            if sprite["isStage"].as_bool().unwrap() {
+                Default::default()
+            } else {
+                GraphicalProperties {
+                    x: sprite["x"].as_f64().unwrap(),
+                    y: sprite["y"].as_f64().unwrap(),
+                    direction: sprite["direction"].as_f64().unwrap() as f32,
+                    size: sprite["size"].as_f64().unwrap() as f32,
+                    costume_number: 0,
+                }
+            },
+        );
+        temp_sprite
+    }
+
+    fn sprite_costume_load(
+        sprite: &serde_json::Value,
+        temp_project: &Project<'a>,
+        db: &usvg_text_layout::fontdb::Database,
+        texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+        temp_sprite: &mut Sprite<'a>,
+    ) {
+        for costume in sprite["costumes"].as_array().unwrap() {
+            costume_convert_svg_to_png(costume, temp_project, db);
+            let texture = costume_load_png(texture_creator, temp_project, costume);
+
+            temp_sprite.costumes.push(Costume {
+                centre_x: costume["rotationCenterX"].as_f64().unwrap(),
+                centre_y: costume["rotationCenterY"].as_f64().unwrap(),
+                data: texture,
+                name: costume["name"].as_str().unwrap().to_string(),
+            });
+        }
+    }
+
+    fn sprite_load_variables(
+        sprite: &serde_json::Value,
+        variable_memory: &mut Vec<Value>,
+        variables: &mut HashMap<String, usize>,
+    ) {
+        for (variable_hash, variable_data) in sprite["variables"].as_object().unwrap() {
+            variable_memory.push({
+                match &variable_data.as_array().unwrap()[1] {
+                    serde_json::Value::Bool(n) => Value::Boolean(*n),
+                    serde_json::Value::Number(n) => Value::Number(n.as_f64().unwrap()),
+                    serde_json::Value::String(n) => Value::String(n.clone()),
+                    _ => panic!(),
+                }
+            });
+            variables.insert(variable_hash.clone(), variable_memory.len() - 1);
+        }
+    }
+
+    fn sprite_find_hat_blocks(sprite: &serde_json::Value) -> Vec<(&String, &serde_json::Value)> {
+        let mut hat_blocks: Vec<(&String, &serde_json::Value)> = vec![];
+        for (block_id, block_data) in sprite["blocks"].as_object().unwrap() {
+            if block_data.is_array() {
+                eprintln!("[unimplemented] block is an array");
+                break;
+            }
+            // If the block has no parent (At the top)
+            if block_data["parent"] == serde_json::Value::Null {
+                hat_blocks.push((block_id, block_data));
+            }
+        }
+        hat_blocks
+    }
+
+    fn compile_hat_blocks(
+        orphans: Vec<(&String, &serde_json::Value)>,
+        variables: &mut HashMap<String, usize>,
+        variable_memory: &mut Vec<Value>,
+        temp_sprite: &mut Sprite<'_>,
+        sprite: &serde_json::Value,
+    ) {
+        for (thread_number, (_, block_data)) in orphans.iter().enumerate() {
+            let opcode = block_data["opcode"].as_str().unwrap();
+            match opcode {
+                "event_whenflagclicked" => c_events_whenflagclicked(
+                    variables,
+                    variable_memory,
+                    temp_sprite,
+                    block_data,
+                    thread_number,
+                    sprite,
+                ),
+                _ => {
+                    eprintln!("[unimplemented hat block] {opcode}")
+                }
+            }
+        }
+    }
 }
 
 fn costume_load_png<'a>(
@@ -253,7 +295,7 @@ fn costume_load_png<'a>(
     costume: &serde_json::Value,
 ) -> sdl2::render::Texture<'a> {
     let texture: sdl2::render::Texture<'a> = load_texture_from_file(
-        &texture_creator,
+        texture_creator,
         temp_project
             .path
             .join(costume["assetId"].as_str().unwrap().to_string() + ".png"),
@@ -268,7 +310,6 @@ fn costume_convert_svg_to_png(
     db: &usvg_text_layout::fontdb::Database,
 ) {
     if costume["dataFormat"].as_str().unwrap() == "svg" {
-        let temp_project = temp_project;
         third_party::svg_to_png::render(
             temp_project
                 .path
@@ -298,7 +339,6 @@ fn c_events_whenflagclicked(
     block_data: &serde_json::Value,
     thread_number: usize,
     sprite: &serde_json::Value,
-    costume_names: &Vec<String>,
 ) {
     let mut instructions: Vec<Instruction> = vec![];
     let mut current_block = (*block_data).clone();
@@ -309,7 +349,6 @@ fn c_events_whenflagclicked(
         &mut instructions,
         thread_number,
         sprite,
-        costume_names,
     );
 
     while current_block["next"] != serde_json::Value::Null {
@@ -328,12 +367,15 @@ fn c_events_whenflagclicked(
 
 fn dump_instructions_and_variables(
     variables: &mut HashMap<String, usize>,
-    variable_memory: &mut Vec<Value>,
+    variable_memory: &mut [Value],
     instructions: &Vec<Instruction>,
 ) {
     println!("[variable dump] {{");
     for (variable, i) in variables.iter() {
-        println!("    {i}: {variable} ({})", variable_memory[*i]);
+        println!(
+            "    {i}: {variable} ({})",
+            variable_memory[*i].print(Some(variables))
+        );
     }
     println!("}}");
     println!("[instruction dump] {{");
@@ -343,7 +385,7 @@ fn dump_instructions_and_variables(
     println!("}}");
 }
 
-fn ls(path: &std::path::Path) {
+fn _ls(path: &std::path::Path) {
     match std::fs::read_dir(path) {
         Ok(entries) => {
             // Iterate over the entries and print their names
