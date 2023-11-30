@@ -44,11 +44,22 @@ impl<'a> Sprite<'a> {
         }
     }
 
-    pub fn run(&mut self, memory: &mut [Value]) {
+    pub fn run(
+        &mut self,
+        memory: &mut [Value],
+        canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+        pen_canvas: &mut sdl2::render::Texture,
+    ) {
         let mut i = 0;
         while i < self.threads.len() {
             let thread = &mut self.threads[i];
-            thread.run(memory, &mut self.graphical_properties, &self.costumes);
+            thread.run(
+                memory,
+                &mut self.graphical_properties,
+                &self.costumes,
+                canvas,
+                pen_canvas,
+            );
 
             if thread.killed {
                 self.threads.remove(i);

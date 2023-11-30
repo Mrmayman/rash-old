@@ -1,4 +1,4 @@
-use sdl2::image::LoadTexture;
+use sdl2::{image::LoadTexture, rect::Rect};
 use std::collections::HashMap;
 use tempfile::TempDir;
 
@@ -148,9 +148,13 @@ impl<'a> Project<'a> {
         self.memory = vec![Value::Number(0.0); size].into_boxed_slice();
     }*/
 
-    pub fn run(&mut self) {
+    pub fn run(
+        &mut self,
+        canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+        pen_canvas: &mut sdl2::render::Texture,
+    ) {
         for sprite in &mut self.sprites {
-            sprite.run(&mut self.memory);
+            sprite.run(&mut self.memory, canvas, pen_canvas);
         }
     }
 
@@ -158,37 +162,22 @@ impl<'a> Project<'a> {
         serde_json::to_string_pretty(&value).expect("Could not print project.json")
     }
 
-    pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
+    pub fn draw(
+        &self,
+        canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+        pen_canvas: &mut sdl2::render::Texture,
+    ) {
         for sprite in &self.sprites {
             let properties = &sprite.graphical_properties;
-            let size = properties.size / 100.0;
             let current_costume = &sprite.costumes[properties.costume_number];
-            let query = current_costume.data.query();
-
-            let (canvas_width, canvas_height) = canvas.output_size().unwrap();
-
-            let size_difference_f64 = canvas_width as f64 / 480.0;
-            let size_difference_f32 = canvas_width as f32 / 480.0;
-
-            let width = size * query.width as f32 * size_difference_f32;
-            let height = size * query.height as f32 * size_difference_f32;
-
-            let mut sprite_x = properties.x - current_costume.centre_x;
-            let mut sprite_y = properties.y + current_costume.centre_y;
-
-            sprite_x *= size_difference_f64;
-            sprite_y *= size_difference_f64;
-
-            sprite_x += canvas_width as f64 / 2.0;
-            sprite_y = (canvas_height as f64 / 2.0) - sprite_y;
-
-            let rect = sdl2::rect::Rect::new(
-                sprite_x as i32,
-                sprite_y as i32,
-                width as u32,
-                height as u32,
-            );
+            let rect = get_sprite_rect(properties, current_costume, canvas.output_size().unwrap());
             canvas.copy(&current_costume.data, None, rect).unwrap();
+
+            if sprite.name == "Stage" {
+                canvas
+                    .copy(&pen_canvas, None, Rect::new(0, 0, 800, 600))
+                    .unwrap();
+            }
         }
     }
 
@@ -287,6 +276,38 @@ impl<'a> Project<'a> {
             }
         }
     }
+}
+
+pub fn get_sprite_rect(
+    properties: &GraphicalProperties,
+    current_costume: &Costume<'_>,
+    (canvas_width, canvas_height): (u32, u32),
+) -> Rect {
+    let size = properties.size / 100.0;
+    let query = current_costume.data.query();
+
+    let size_difference_f64 = canvas_width as f64 / 480.0;
+    let size_difference_f32 = canvas_width as f32 / 480.0;
+
+    let width = size * query.width as f32 * size_difference_f32;
+    let height = size * query.height as f32 * size_difference_f32;
+
+    let mut sprite_x = properties.x - current_costume.centre_x;
+    let mut sprite_y = properties.y + current_costume.centre_y;
+
+    sprite_x *= size_difference_f64;
+    sprite_y *= size_difference_f64;
+
+    sprite_x += canvas_width as f64 / 2.0;
+    sprite_y = (canvas_height as f64 / 2.0) - sprite_y;
+
+    let rect = sdl2::rect::Rect::new(
+        sprite_x as i32,
+        sprite_y as i32,
+        width as u32,
+        height as u32,
+    );
+    rect
 }
 
 fn costume_load_png<'a>(

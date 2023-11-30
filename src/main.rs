@@ -31,6 +31,7 @@ mod compile {
     pub mod looks;
     pub mod motion;
     pub mod operators;
+    pub mod pen;
     pub mod variables;
 }
 
@@ -52,13 +53,23 @@ fn main() {
 
     let texture_creator = canvas.texture_creator();
 
+    let mut pen_canvas = texture_creator
+        .create_texture_target(None, 800, 600)
+        .unwrap();
+    pen_canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+
     let mut project = project::base::Project::new(get_project_file_path(), &texture_creator)
         .expect("Could not load project");
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut last_frame_time = std::time::Instant::now();
 
-    // let _image_context = sdl2::image::init(sdl2::image::InitFlag::)
+    // Clear the pen canvas, otherwise it will be black.
+    canvas
+        .with_texture_canvas(&mut pen_canvas, |texture_canvas| {
+            texture_canvas.clear();
+        })
+        .unwrap();
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -70,15 +81,15 @@ fn main() {
 
         canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 255, 255));
         canvas.clear();
-        project.run();
+        project.run(&mut canvas, &mut pen_canvas);
         canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 0, 255));
-        project.draw(&mut canvas);
+
+        project.draw(&mut canvas, &mut pen_canvas);
         canvas.present();
 
         let elapsed = last_frame_time.elapsed();
         last_frame_time = std::time::Instant::now();
         let frame_time = std::time::Duration::from_secs_f64(1.0 / 30.0);
-        // println!("{:?}", elapsed);
 
         if elapsed < frame_time {
             std::thread::sleep(frame_time - elapsed);

@@ -1,5 +1,6 @@
 use crate::{
     interpreter::{Instruction, Value},
+    project::base::get_sprite_rect,
     sprite::{Costume, GraphicalProperties},
 };
 
@@ -23,9 +24,12 @@ impl<'a> Thread {
         memory: &mut [Value],
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
+        canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+        pen_canvas: &mut sdl2::render::Texture,
     ) {
         loop {
-            let should_break: bool = self.run_bytecode(memory, properties, costumes);
+            let should_break: bool =
+                self.run_bytecode(memory, properties, costumes, canvas, pen_canvas);
             self.counter += 1;
             if should_break {
                 break;
@@ -49,6 +53,8 @@ impl<'a> Thread {
         memory: &mut [Value],
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
+        canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+        pen_canvas: &mut sdl2::render::Texture,
     ) -> bool {
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {
@@ -207,6 +213,31 @@ impl<'a> Thread {
             }
             Instruction::MotionGetY(location) => {
                 memory[location.get_pointer()] = Value::Number(properties.y)
+            }
+            Instruction::PenClear => {
+                canvas
+                    .with_texture_canvas(pen_canvas, |texture_canvas| {
+                        texture_canvas.clear();
+                    })
+                    .unwrap();
+            }
+            Instruction::PenStamp => {
+                let size = canvas.output_size().unwrap();
+                canvas
+                    .with_texture_canvas(pen_canvas, |texture_canvas| {
+                        texture_canvas
+                            .copy(
+                                &costumes[properties.costume_number].data,
+                                None,
+                                get_sprite_rect(
+                                    properties,
+                                    &costumes[properties.costume_number],
+                                    size,
+                                ),
+                            )
+                            .unwrap();
+                    })
+                    .unwrap();
             }
         }
         false

@@ -28,6 +28,8 @@ pub enum Instruction {
     LooksSetSize(Value),
     LooksSetCostume(Value),
     LooksGetCostumeNumber(Value),
+    PenClear,
+    PenStamp,
 }
 
 impl Instruction {
@@ -36,9 +38,9 @@ impl Instruction {
             Instruction::MemoryStore(at, n) => {
                 format!("{} = {};", get_var(variables, at), n.print(variables))
             }
-            Instruction::MemoryDump => "std::dumpMemory();".to_string(),
-            Instruction::ThreadKill => "return;".to_string(),
-            Instruction::ThreadPause => "std::renderFrame()".to_string(),
+            Instruction::MemoryDump => "dump_memory();".to_owned(),
+            Instruction::ThreadKill => "return;".to_owned(),
+            Instruction::ThreadPause => "render_frame()".to_owned(),
             Instruction::OperatorModulo(l, a, b) => {
                 format!(
                     "{} = {} % {}",
@@ -137,6 +139,8 @@ impl Instruction {
             }
             Instruction::MotionGetX(location) => format!("{} = get_x()", location.print(variables)),
             Instruction::MotionGetY(location) => format!("{} = get_y()", location.print(variables)),
+            Instruction::PenClear => "pen_clear()".to_owned(),
+            Instruction::PenStamp => "pen_stamp()".to_owned(),
         }
     }
 }

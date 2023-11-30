@@ -59,6 +59,8 @@ impl<'a> ParseState<'a> {
             "looks_setsizeto" => self.c_looks_set_size(current_block),
             "looks_switchcostumeto" => self.c_looks_switch_costume(current_block),
             "looks_costumenumbername" => self.c_looks_get_costume(current_block),
+            "pen_clear" => self.c_pen_clear(),
+            "pen_stamp" => self.c_pen_stamp(),
             _ => {
                 eprintln!("[unimplemented block] {opcode}");
                 BlockResult::Nothing
