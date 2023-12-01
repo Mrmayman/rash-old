@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::format};
 
 #[derive(Clone)]
 pub enum Instruction {
@@ -21,6 +21,7 @@ pub enum Instruction {
     FlowIfNotJumpToPlace(Value, String),
     MotionChangeX(Value),
     MotionChangeY(Value),
+    MotionSetXY(Value, Value),
     MotionSetX(Value),
     MotionSetY(Value),
     MotionGetX(Value),
@@ -130,6 +131,9 @@ impl Instruction {
             Instruction::MotionChangeY(y) => format!("change y by {}", y.print(variables)),
             Instruction::MotionSetX(x) => format!("set x to {}", x.print(variables)),
             Instruction::MotionSetY(y) => format!("set y to {}", y.print(variables)),
+            Instruction::MotionSetXY(x, y) => {
+                format!("go to x: {}, y: {}", x.print(variables), y.print(variables))
+            }
             Instruction::LooksSetSize(size) => format!("set size to {}", size.print(variables)),
             Instruction::LooksSetCostume(costume) => {
                 format!("set costume to {}", costume.print(variables))

@@ -1,11 +1,13 @@
-use crate::{interpreter::Value, thread::Thread};
+use crate::{interpreter::Value, pen_canvas::PenCanvases, thread::Thread};
 
 pub struct GraphicalProperties {
     pub x: f64,
     pub y: f64,
     pub size: f32,
+    pub shown: bool,
     pub direction: f32,
     pub costume_number: usize,
+    pub pen_down: bool,
 }
 
 impl Default for GraphicalProperties {
@@ -14,8 +16,10 @@ impl Default for GraphicalProperties {
             x: 0.0,
             y: 0.0,
             size: 100.0,
+            shown: true,
             direction: 90.0,
             costume_number: 0,
+            pen_down: false,
         }
     }
 }
@@ -48,7 +52,7 @@ impl<'a> Sprite<'a> {
         &mut self,
         memory: &mut [Value],
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut sdl2::render::Texture,
+        pen_canvas: &mut PenCanvases,
     ) {
         let mut i = 0;
         while i < self.threads.len() {

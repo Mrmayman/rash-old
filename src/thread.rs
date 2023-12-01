@@ -1,5 +1,6 @@
 use crate::{
     interpreter::{Instruction, Value},
+    pen_canvas::PenCanvases,
     project::base::get_sprite_rect,
     sprite::{Costume, GraphicalProperties},
 };
@@ -25,7 +26,7 @@ impl<'a> Thread {
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut sdl2::render::Texture,
+        pen_canvas: &mut PenCanvases,
     ) {
         loop {
             let should_break: bool =
@@ -54,7 +55,7 @@ impl<'a> Thread {
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut sdl2::render::Texture,
+        pen_canvas: &mut PenCanvases,
     ) -> bool {
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {
@@ -184,6 +185,10 @@ impl<'a> Thread {
             Instruction::MotionChangeY(n) => properties.y += n.get_number(memory),
             Instruction::MotionSetX(x) => properties.x = x.get_number(memory),
             Instruction::MotionSetY(y) => properties.y = y.get_number(memory),
+            Instruction::MotionSetXY(x, y) => {
+                properties.x = x.get_number(memory);
+                properties.y = y.get_number(memory);
+            }
             Instruction::LooksSetSize(size) => properties.size = size.get_number(memory) as f32,
             Instruction::LooksSetCostume(costume_val) => {
                 let costume_name = costume_val.get_string(memory);
@@ -216,7 +221,7 @@ impl<'a> Thread {
             }
             Instruction::PenClear => {
                 canvas
-                    .with_texture_canvas(pen_canvas, |texture_canvas| {
+                    .with_texture_canvas(&mut pen_canvas.pen_canvas, |texture_canvas| {
                         texture_canvas.clear();
                     })
                     .unwrap();
@@ -224,7 +229,7 @@ impl<'a> Thread {
             Instruction::PenStamp => {
                 let size = canvas.output_size().unwrap();
                 canvas
-                    .with_texture_canvas(pen_canvas, |texture_canvas| {
+                    .with_texture_canvas(&mut pen_canvas.pen_canvas, |texture_canvas| {
                         texture_canvas
                             .copy(
                                 &costumes[properties.costume_number].data,

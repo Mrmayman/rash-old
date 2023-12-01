@@ -7,10 +7,7 @@ impl<'a> ParseState<'a> {
     pub fn c_motion_go_to(&mut self, current_block: &serde_json::Value) -> BlockResult {
         let x: Value = self.input_get_number(current_block, "X");
         let y: Value = self.input_get_number(current_block, "Y");
-
-        self.instructions.push(Instruction::MotionSetX(x));
-        self.instructions.push(Instruction::MotionSetY(y));
-
+        self.instructions.push(Instruction::MotionSetXY(x, y));
         BlockResult::Nothing
     }
 

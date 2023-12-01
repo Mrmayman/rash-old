@@ -1,3 +1,5 @@
+use pen_canvas::PenCanvases;
+
 /**
  *  Rash, a Scratch interpreter written in Rust
  *  Copyright (C) 2023 Mrmayman<navneetkrishna22@gmail.com>
@@ -16,6 +18,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 mod interpreter;
+mod pen_canvas;
 mod sprite;
 mod thread;
 
@@ -42,34 +45,21 @@ mod third_party {
 fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
-
     let window = video_subsystem
         .window("Rash", 800, 600)
         .position_centered()
         .build()
         .unwrap();
-
     let mut canvas = window.into_canvas().build().unwrap();
-
     let texture_creator = canvas.texture_creator();
 
-    let mut pen_canvas = texture_creator
-        .create_texture_target(None, 800, 600)
-        .unwrap();
-    pen_canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+    let mut pen_canvases = PenCanvases::new(&texture_creator, &mut canvas);
 
     let mut project = project::base::Project::new(get_project_file_path(), &texture_creator)
         .expect("Could not load project");
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut last_frame_time = std::time::Instant::now();
-
-    // Clear the pen canvas, otherwise it will be black.
-    canvas
-        .with_texture_canvas(&mut pen_canvas, |texture_canvas| {
-            texture_canvas.clear();
-        })
-        .unwrap();
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -81,10 +71,10 @@ fn main() {
 
         canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 255, 255));
         canvas.clear();
-        project.run(&mut canvas, &mut pen_canvas);
+        project.run(&mut canvas, &mut pen_canvases);
         canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 0, 255));
 
-        project.draw(&mut canvas, &mut pen_canvas);
+        project.draw(&mut canvas, &mut pen_canvases);
         canvas.present();
 
         let elapsed = last_frame_time.elapsed();

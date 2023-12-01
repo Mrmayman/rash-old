@@ -4,6 +4,7 @@ use tempfile::TempDir;
 
 use crate::{
     interpreter::{Instruction, Value},
+    pen_canvas::PenCanvases,
     project::state::ParseState,
     sprite::{Costume, GraphicalProperties, Sprite},
     third_party,
@@ -151,7 +152,7 @@ impl<'a> Project<'a> {
     pub fn run(
         &mut self,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut sdl2::render::Texture,
+        pen_canvas: &mut PenCanvases,
     ) {
         for sprite in &mut self.sprites {
             sprite.run(&mut self.memory, canvas, pen_canvas);
@@ -165,7 +166,7 @@ impl<'a> Project<'a> {
     pub fn draw(
         &self,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut sdl2::render::Texture,
+        pen_canvas: &mut PenCanvases,
     ) {
         for sprite in &self.sprites {
             let properties = &sprite.graphical_properties;
@@ -175,7 +176,7 @@ impl<'a> Project<'a> {
 
             if sprite.name == "Stage" {
                 canvas
-                    .copy(&pen_canvas, None, Rect::new(0, 0, 800, 600))
+                    .copy(&pen_canvas.pen_canvas, None, Rect::new(0, 0, 800, 600))
                     .unwrap();
             }
         }
@@ -190,9 +191,11 @@ impl<'a> Project<'a> {
                 GraphicalProperties {
                     x: sprite["x"].as_f64().unwrap(),
                     y: sprite["y"].as_f64().unwrap(),
+                    shown: sprite["visible"].as_bool().unwrap(),
                     direction: sprite["direction"].as_f64().unwrap() as f32,
                     size: sprite["size"].as_f64().unwrap() as f32,
                     costume_number: 0,
+                    pen_down: false,
                 }
             },
         );
