@@ -1,4 +1,7 @@
-use crate::interpreter::{Instruction, Value};
+use crate::{
+    ansi_codes,
+    interpreter::{Instruction, Value},
+};
 
 use super::{base::BlockResult, state::ParseState};
 
@@ -52,7 +55,9 @@ impl<'a> ParseState<'a> {
                             Value::Number(0.0),
                         ));
                         eprintln!(
-                            "[unimplemented block] {} (inside expression)",
+                            "{}[unimplemented block]{} {} (inside expression)",
+                            ansi_codes::RED,
+                            ansi_codes::RESET,
                             block["opcode"].as_str().unwrap()
                         );
                     }

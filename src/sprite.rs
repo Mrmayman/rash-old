@@ -1,4 +1,6 @@
-use crate::{interpreter::Value, pen_canvas::PenCanvases, thread::Thread};
+use sdl2::pixels::Color;
+
+use crate::{interpreter::Value, project_state::ProjectState, thread::Thread};
 
 pub struct GraphicalProperties {
     pub x: f64,
@@ -8,6 +10,8 @@ pub struct GraphicalProperties {
     pub direction: f32,
     pub costume_number: usize,
     pub pen_down: bool,
+    pub pen_radius: i32,
+    pub pen_color: Color,
 }
 
 impl Default for GraphicalProperties {
@@ -20,6 +24,8 @@ impl Default for GraphicalProperties {
             direction: 90.0,
             costume_number: 0,
             pen_down: false,
+            pen_radius: 1,
+            pen_color: Color::RGB(0, 0, 255),
         }
     }
 }
@@ -52,7 +58,7 @@ impl<'a> Sprite<'a> {
         &mut self,
         memory: &mut [Value],
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut PenCanvases,
+        pen_canvas: &mut ProjectState,
     ) {
         let mut i = 0;
         while i < self.threads.len() {

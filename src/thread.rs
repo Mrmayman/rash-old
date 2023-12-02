@@ -1,7 +1,14 @@
+use sdl2::{
+    pixels::Color,
+    rect::{Point, Rect},
+};
+
 use crate::{
+    ansi_codes,
     interpreter::{Instruction, Value},
-    pen_canvas::PenCanvases,
-    project::base::get_sprite_rect,
+    pen_line,
+    project::base::{get_scaled_point, get_sprite_rect},
+    project_state::ProjectState,
     sprite::{Costume, GraphicalProperties},
 };
 
@@ -26,7 +33,7 @@ impl<'a> Thread {
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut PenCanvases,
+        pen_canvas: &mut ProjectState,
     ) {
         loop {
             let should_break: bool =
@@ -55,11 +62,11 @@ impl<'a> Thread {
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut PenCanvases,
+        project_state: &mut ProjectState,
     ) -> bool {
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {
-                println!("[memory dump] {{");
+                println!("{}[memory dump]{} {{", ansi_codes::GREEN, ansi_codes::RESET);
                 dump_memory(memory);
                 println!("}}")
             }
@@ -110,6 +117,62 @@ impl<'a> Thread {
                 let b = b.get_number(memory);
                 memory[location] = Value::Number(a / b);
             }
+            Instruction::OperatorPower(location, a, b) => {
+                let location = location.get_pointer();
+                let a = a.get_number(memory);
+                let b = b.get_number(memory);
+                memory[location] = Value::Number(a.powf(b));
+            }
+            Instruction::OperatorERaised(l, n) => {
+                memory[l.get_pointer()] = Value::Number(n.get_number(memory).exp())
+            }
+            Instruction::OperatorSin(l, n) => {
+                memory[l.get_pointer()] =
+                    Value::Number((n.get_number(memory) * std::f64::consts::PI / 180.0).sin())
+            }
+            Instruction::OperatorCos(l, n) => {
+                memory[l.get_pointer()] =
+                    Value::Number((n.get_number(memory) * std::f64::consts::PI / 180.0).cos())
+            }
+            Instruction::OperatorTan(l, n) => {
+                memory[l.get_pointer()] =
+                    Value::Number((n.get_number(memory) * std::f64::consts::PI / 180.0).tan())
+            }
+            Instruction::OperatorAbs(l, n) => {
+                memory[l.get_pointer()] = Value::Number(n.get_number(memory).abs())
+            }
+            Instruction::OperatorASin(l, n) => {
+                memory[l.get_pointer()] =
+                    Value::Number(n.get_number(memory).asin() * (180.0 / std::f64::consts::PI))
+            }
+            Instruction::OperatorACos(l, n) => {
+                memory[l.get_pointer()] =
+                    Value::Number(n.get_number(memory).acos() * (180.0 / std::f64::consts::PI))
+            }
+            Instruction::OperatorATan(l, n) => {
+                memory[l.get_pointer()] =
+                    Value::Number(n.get_number(memory).atan() * (180.0 / std::f64::consts::PI))
+            }
+            Instruction::OperatorSqrt(l, n) => {
+                let num = n.get_number(memory);
+                memory[l.get_pointer()] = if num < 0.0 {
+                    Value::Number(0.0)
+                } else {
+                    Value::Number(num.sqrt())
+                }
+            }
+            Instruction::OperatorLn(l, n) => {
+                memory[l.get_pointer()] = Value::Number(n.get_number(memory).ln())
+            }
+            Instruction::OperatorLog(l, n) => {
+                memory[l.get_pointer()] = Value::Number(n.get_number(memory).log10())
+            }
+            Instruction::OperatorFloor(l, n) => {
+                memory[l.get_pointer()] = Value::Number(n.get_number(memory).floor())
+            }
+            Instruction::OperatorCeiling(l, n) => {
+                memory[l.get_pointer()] = Value::Number(n.get_number(memory).ceil())
+            }
             Instruction::OperatorLesser(location, a, b) => {
                 let location = location.get_pointer();
                 let a = a.get_number(memory);
@@ -150,6 +213,10 @@ impl<'a> Thread {
                     ),
                 })
             }
+            Instruction::SensingTimer(location) => {
+                memory[location.get_pointer()] =
+                    Value::Number(project_state.scratch_timer.elapsed().as_secs_f64())
+            }
             Instruction::FlowIfJump(condition, location) => {
                 if condition.get_bool(memory) {
                     let location = location.get_number(memory) as usize;
@@ -180,14 +247,60 @@ impl<'a> Thread {
             }
             Instruction::FlowDefinePlace(_) => {}
             Instruction::MotionChangeX(n) => {
-                properties.x += n.get_number(memory);
+                let mut new_x = properties.x + n.get_number(memory);
+                let mut new_y = properties.y;
+                fencing_clamp(
+                    &mut new_x,
+                    &mut new_y,
+                    costumes[properties.costume_number].data.query(),
+                );
+                pen_line::draw(canvas, project_state, properties, new_x, new_y);
+                properties.x = new_x;
             }
-            Instruction::MotionChangeY(n) => properties.y += n.get_number(memory),
-            Instruction::MotionSetX(x) => properties.x = x.get_number(memory),
-            Instruction::MotionSetY(y) => properties.y = y.get_number(memory),
+            Instruction::MotionChangeY(n) => {
+                let mut new_x = properties.x;
+                let mut new_y = properties.y + n.get_number(memory);
+                fencing_clamp(
+                    &mut new_x,
+                    &mut new_y,
+                    costumes[properties.costume_number].data.query(),
+                );
+                pen_line::draw(canvas, project_state, properties, new_x, new_y);
+                properties.y = new_y;
+            }
+            Instruction::MotionSetX(x) => {
+                let mut new_x = x.get_number(memory);
+                let mut new_y = properties.y;
+                fencing_clamp(
+                    &mut new_x,
+                    &mut new_y,
+                    costumes[properties.costume_number].data.query(),
+                );
+                pen_line::draw(canvas, project_state, properties, new_x, new_y);
+                properties.x = new_x;
+            }
+            Instruction::MotionSetY(y) => {
+                let mut new_x = properties.x;
+                let mut new_y = y.get_number(memory);
+                fencing_clamp(
+                    &mut new_x,
+                    &mut new_y,
+                    costumes[properties.costume_number].data.query(),
+                );
+                pen_line::draw(canvas, project_state, properties, new_x, new_y);
+                properties.y = new_y;
+            }
             Instruction::MotionSetXY(x, y) => {
-                properties.x = x.get_number(memory);
-                properties.y = y.get_number(memory);
+                let mut new_x = x.get_number(memory);
+                let mut new_y = y.get_number(memory);
+                fencing_clamp(
+                    &mut new_x,
+                    &mut new_y,
+                    costumes[properties.costume_number].data.query(),
+                );
+                pen_line::draw(canvas, project_state, properties, new_x, new_y);
+                properties.x = new_x;
+                properties.y = new_y;
             }
             Instruction::LooksSetSize(size) => properties.size = size.get_number(memory) as f32,
             Instruction::LooksSetCostume(costume_val) => {
@@ -196,10 +309,14 @@ impl<'a> Thread {
                     .iter()
                     .position(|costume| costume.name == costume_name)
                 {
+                    // Setting costume via name.
+                    // Example: set costume to "costume1".
                     Some(n) => {
                         properties.costume_number = n;
                         // println!("costume name: {}", properties.costume_number);
                     }
+                    // Setting costume via number.
+                    // Example: set costume to 1.
                     None => {
                         let number_of_costumes = costumes.len() as i32;
                         let costume_number = costume_val.get_number(memory) as i32;
@@ -221,7 +338,8 @@ impl<'a> Thread {
             }
             Instruction::PenClear => {
                 canvas
-                    .with_texture_canvas(&mut pen_canvas.pen_canvas, |texture_canvas| {
+                    .with_texture_canvas(&mut project_state.main_canvas, |texture_canvas| {
+                        texture_canvas.set_draw_color(Color::RGBA(0, 0, 0, 0));
                         texture_canvas.clear();
                     })
                     .unwrap();
@@ -229,7 +347,7 @@ impl<'a> Thread {
             Instruction::PenStamp => {
                 let size = canvas.output_size().unwrap();
                 canvas
-                    .with_texture_canvas(&mut pen_canvas.pen_canvas, |texture_canvas| {
+                    .with_texture_canvas(&mut project_state.main_canvas, |texture_canvas| {
                         texture_canvas
                             .copy(
                                 &costumes[properties.costume_number].data,
@@ -244,8 +362,32 @@ impl<'a> Thread {
                     })
                     .unwrap();
             }
+            Instruction::PenUp => properties.pen_down = false,
+            Instruction::PenDown => properties.pen_down = true,
+            Instruction::PenSetRadius(value) => {
+                properties.pen_radius = value.get_number(memory) as i32 * 2
+            }
+            Instruction::LooksHide => properties.shown = false,
+            Instruction::LooksShow => properties.shown = true,
         }
         false
+    }
+}
+
+fn fencing_clamp(new_x: &mut f64, new_y: &mut f64, query: sdl2::render::TextureQuery) {
+    if *new_x > 240.0 {
+        if query.width > 32 {
+            *new_x = 240.0 + (query.width / 2) as f64 - 15.0;
+        } else {
+            *new_x = 240.0
+        }
+    }
+    if *new_y > 180.0 {
+        if query.height > 32 {
+            *new_y = 180.0 + (query.height / 2) as f64 - 15.0;
+        } else {
+            *new_y = 180.0
+        }
     }
 }
 

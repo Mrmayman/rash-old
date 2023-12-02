@@ -5,9 +5,15 @@ use crate::{
 
 impl<'a> ParseState<'a> {
     pub fn c_motion_go_to(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let x: Value = self.input_get_number(current_block, "X");
-        let y: Value = self.input_get_number(current_block, "Y");
+        let (x, x_ptr) = self.input_get_number_multi_input(current_block, "X");
+        let (y, y_ptr) = self.input_get_number_multi_input(current_block, "Y");
         self.instructions.push(Instruction::MotionSetXY(x, y));
+        if let Some(ptr) = x_ptr {
+            self.register_free(ptr);
+        }
+        if let Some(ptr) = y_ptr {
+            self.register_free(ptr);
+        }
         BlockResult::Nothing
     }
 

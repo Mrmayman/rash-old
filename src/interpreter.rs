@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::format};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub enum Instruction {
@@ -12,8 +12,23 @@ pub enum Instruction {
     OperatorMultiply(Value, Value, Value),
     OperatorDivide(Value, Value, Value),
     OperatorLesser(Value, Value, Value),
+    OperatorPower(Value, Value, Value),
+    OperatorERaised(Value, Value),
+    OperatorSin(Value, Value),
+    OperatorCos(Value, Value),
+    OperatorTan(Value, Value),
+    OperatorAbs(Value, Value),
+    OperatorASin(Value, Value),
+    OperatorACos(Value, Value),
+    OperatorATan(Value, Value),
+    OperatorSqrt(Value, Value),
+    OperatorLn(Value, Value),
+    OperatorLog(Value, Value),
+    OperatorFloor(Value, Value),
+    OperatorCeiling(Value, Value),
     OperatorGreater(Value, Value, Value),
     OperatorEquals(Value, Value, Value),
+    SensingTimer(Value),
     FlowIfJump(Value, Value),
     FlowIfJumpToPlace(Value, String),
     FlowDefinePlace(String),
@@ -29,15 +44,20 @@ pub enum Instruction {
     LooksSetSize(Value),
     LooksSetCostume(Value),
     LooksGetCostumeNumber(Value),
+    LooksHide,
+    LooksShow,
     PenClear,
     PenStamp,
+    PenUp,
+    PenDown,
+    PenSetRadius(Value),
 }
 
 impl Instruction {
     pub fn print(&self, variables: Option<&HashMap<String, usize>>) -> String {
         match &self {
             Instruction::MemoryStore(at, n) => {
-                format!("{} = {};", get_var(variables, at), n.print(variables))
+                format!("{} = {};", at.print(variables), n.print(variables))
             }
             Instruction::MemoryDump => "dump_memory();".to_owned(),
             Instruction::ThreadKill => "return;".to_owned(),
@@ -45,66 +65,116 @@ impl Instruction {
             Instruction::OperatorModulo(l, a, b) => {
                 format!(
                     "{} = {} % {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
             }
             Instruction::OperatorAdd(l, a, b) => {
                 format!(
                     "{} = {} + {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
             }
             Instruction::OperatorSubtract(l, a, b) => {
                 format!(
                     "{} = {} - {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
             }
             Instruction::OperatorMultiply(l, a, b) => {
                 format!(
                     "{} = {} * {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
             }
             Instruction::OperatorDivide(l, a, b) => {
                 format!(
                     "{} = {} / {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
+            }
+            Instruction::OperatorPower(l, a, b) => {
+                format!(
+                    "{} = {} ^ {}",
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
+                )
+            }
+            Instruction::OperatorERaised(l, n) => {
+                format!("{} = e ^ {}", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorSin(l, n) => {
+                format!("{} = sin({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorCos(l, n) => {
+                format!("{} = cos({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorTan(l, n) => {
+                format!("{} = tan({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorAbs(l, n) => {
+                format!("{} = abs({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorASin(l, n) => {
+                format!("{} = asin({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorACos(l, n) => {
+                format!("{} = acos({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorATan(l, n) => {
+                format!("{} = atan({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorSqrt(l, n) => {
+                format!("{} = sqrt({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorLn(l, n) => {
+                format!("{} = ln({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorLog(l, n) => {
+                format!("{} = log({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorFloor(l, n) => {
+                format!("{} = floor({})", l.print(variables), n.print(variables),)
+            }
+            Instruction::OperatorCeiling(l, n) => {
+                format!("{} = ceiling({})", l.print(variables), n.print(variables),)
             }
             Instruction::OperatorLesser(l, a, b) => {
                 format!(
                     "{} = {} < {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
             }
             Instruction::OperatorGreater(l, a, b) => {
                 format!(
                     "{} = {} > {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
             }
             Instruction::OperatorEquals(l, a, b) => {
                 format!(
                     "{} = {} == {}",
-                    get_var(variables, l),
-                    get_var(variables, a),
-                    get_var(variables, b)
+                    l.print(variables),
+                    a.print(variables),
+                    b.print(variables)
                 )
+            }
+            Instruction::SensingTimer(location) => {
+                format!("{} = timer()", location.print(variables))
             }
             Instruction::FlowIfJump(condition, l) => {
                 format!(
@@ -145,6 +215,11 @@ impl Instruction {
             Instruction::MotionGetY(location) => format!("{} = get_y()", location.print(variables)),
             Instruction::PenClear => "pen_clear()".to_owned(),
             Instruction::PenStamp => "pen_stamp()".to_owned(),
+            Instruction::PenUp => "pen_up()".to_owned(),
+            Instruction::PenDown => "pen_down()".to_owned(),
+            Instruction::PenSetRadius(value) => format!("pen_set_size({})", value.print(variables)),
+            Instruction::LooksHide => "looks_hide()".to_owned(),
+            Instruction::LooksShow => "looks_show()".to_owned(),
         }
     }
 }

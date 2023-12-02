@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    ansi_codes,
     interpreter::{Instruction, Value},
     project::base::BlockResult,
 };
@@ -47,6 +48,7 @@ impl<'a> ParseState<'a> {
             "operator_gt" => self.c_operators_greater(current_block),
             "operator_lt" => self.c_operators_lesser(current_block),
             "operator_equals" => self.c_operators_equals(current_block),
+            "operator_mathop" => self.c_operators_mathop(current_block),
             "control_forever" => self.c_control_forever(current_block),
             "control_if" => self.c_control_if(current_block),
             "motion_gotoxy" => self.c_motion_go_to(current_block),
@@ -59,10 +61,20 @@ impl<'a> ParseState<'a> {
             "looks_setsizeto" => self.c_looks_set_size(current_block),
             "looks_switchcostumeto" => self.c_looks_switch_costume(current_block),
             "looks_costumenumbername" => self.c_looks_get_costume(current_block),
+            "looks_show" => self.c_looks_show(),
+            "looks_hide" => self.c_looks_hide(),
             "pen_clear" => self.c_pen_clear(),
             "pen_stamp" => self.c_pen_stamp(),
+            "pen_penUp" => self.c_pen_up(),
+            "pen_penDown" => self.c_pen_down(),
+            "pen_setPenSizeTo" => self.c_pen_set_size(current_block),
+            "sensing_timer" => self.c_sensing_timer(),
             _ => {
-                eprintln!("[unimplemented block] {opcode}");
+                eprintln!(
+                    "{}[unimplemented block]{} {opcode}",
+                    ansi_codes::RED,
+                    ansi_codes::RESET
+                );
                 BlockResult::Nothing
             }
         }
@@ -98,7 +110,11 @@ impl<'a> ParseState<'a> {
 
             match &input_1_data[1] {
                 // Case 1.1) block output: set var to (1 + 1)
-                serde_json::Value::String(n) => self.input_number_deal_with_block_output(n),
+                serde_json::Value::String(n) => {
+                    let value = self.input_number_deal_with_block_output(n);
+                    self.register_free(value.1.unwrap());
+                    value.0
+                }
                 // Case 1.2) Variable output: set var to other_var
                 serde_json::Value::Array(n) => {
                     let ptr = self.variables.get(&n[2].as_str().unwrap().to_string());
@@ -108,7 +124,6 @@ impl<'a> ParseState<'a> {
             }
         } else {
             // Case 2) Literal: set var to "1"
-
             let num = input_1_data[1].as_array().unwrap()[1]
                 .as_str()
                 .unwrap()
@@ -120,7 +135,49 @@ impl<'a> ParseState<'a> {
         }
     }
 
-    fn input_number_deal_with_block_output(&mut self, block_id: &str) -> Value {
+    pub fn input_get_number_multi_input(
+        &mut self,
+        current_block: &serde_json::Value,
+        name: &str,
+    ) -> (Value, Option<usize>) {
+        let input_1_data = current_block["inputs"][name].as_array().unwrap();
+
+        // Deal with 2 different cases:
+        // 1) Expression/function: set var to (1 + 1)
+        // 2) Literal: set var to "1"
+
+        if input_1_data.len() == 3 {
+            // Case 1) expression/function: set var to (1 + 1)
+
+            // Deal with 2 further cases:
+            // 1.1) Block output: set var to (1 + 1)
+            // 1.2) Variable output: set var to other_var
+
+            match &input_1_data[1] {
+                // Case 1.1) block output: set var to (1 + 1)
+                serde_json::Value::String(n) => self.input_number_deal_with_block_output(n),
+                // Case 1.2) Variable output: set var to other_var
+                serde_json::Value::Array(n) => {
+                    let ptr = self.variables.get(&n[2].as_str().unwrap().to_string());
+                    (Value::Pointer(*ptr.unwrap()), None)
+                }
+                _ => panic!(),
+            }
+        } else {
+            // Case 2) Literal: set var to "1"
+
+            let num = input_1_data[1].as_array().unwrap()[1]
+                .as_str()
+                .unwrap()
+                .to_string();
+            match num.parse::<f64>() {
+                Ok(n) => (Value::Number(n), None),
+                Err(_) => (Value::Number(0.0), None),
+            }
+        }
+    }
+
+    fn input_number_deal_with_block_output(&mut self, block_id: &str) -> (Value, Option<usize>) {
         // Get the input block.
         // set var to (1 + 1): Here the input block would be the plus operator.
         let input_block = self.get_block(block_id).unwrap();
@@ -130,15 +187,16 @@ impl<'a> ParseState<'a> {
             // If the block is not an operator (error).
             BlockResult::Nothing => {
                 eprintln!(
-                    "[unimplemented block] {}",
+                    "{}[unimplemented block]{} {}",
+                    ansi_codes::RED,
+                    ansi_codes::RESET,
                     input_block["opcode"].as_str().unwrap()
                 );
-                Value::Number(0.0)
+                (Value::Number(0.0), Some(0))
             }
             // Otherwise, deal with it.
             BlockResult::AllocatedMemory(n) => {
-                self.register_free(n);
-                Value::Pointer(self.register_get_variable_id(n))
+                (Value::Pointer(self.register_get_variable_id(n)), Some(n))
             }
         }
     }

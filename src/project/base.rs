@@ -1,11 +1,12 @@
-use sdl2::{image::LoadTexture, rect::Rect};
+use sdl2::{image::LoadTexture, pixels::Color, rect::Rect};
 use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::{
+    ansi_codes,
     interpreter::{Instruction, Value},
-    pen_canvas::PenCanvases,
     project::state::ParseState,
+    project_state::ProjectState,
     sprite::{Costume, GraphicalProperties, Sprite},
     third_party,
     thread::Thread,
@@ -55,7 +56,12 @@ impl<'a> Project<'a> {
             .as_array()
             .expect("Malformed JSON - No \"targets\" list of sprites")
         {
-            println!("[info] started compiling sprite {}", sprite["name"]);
+            println!(
+                "{}[info]{} started compiling sprite {}",
+                ansi_codes::GREEN,
+                ansi_codes::RESET,
+                sprite["name"]
+            );
 
             // Create the sprite
             let mut temp_sprite = Project::sprite_create_from_json(sprite);
@@ -152,7 +158,7 @@ impl<'a> Project<'a> {
     pub fn run(
         &mut self,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut PenCanvases,
+        pen_canvas: &mut ProjectState,
     ) {
         for sprite in &mut self.sprites {
             sprite.run(&mut self.memory, canvas, pen_canvas);
@@ -166,17 +172,20 @@ impl<'a> Project<'a> {
     pub fn draw(
         &self,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut PenCanvases,
+        pen_canvas: &mut ProjectState,
     ) {
-        for sprite in &self.sprites {
-            let properties = &sprite.graphical_properties;
-            let current_costume = &sprite.costumes[properties.costume_number];
-            let rect = get_sprite_rect(properties, current_costume, canvas.output_size().unwrap());
-            canvas.copy(&current_costume.data, None, rect).unwrap();
+        for sprite in self.sprites.iter() {
+            if sprite.graphical_properties.shown {
+                let properties = &sprite.graphical_properties;
+                let current_costume = &sprite.costumes[properties.costume_number];
+                let rect =
+                    get_sprite_rect(properties, current_costume, canvas.output_size().unwrap());
+                canvas.copy(&current_costume.data, None, rect).unwrap();
+            }
 
             if sprite.name == "Stage" {
                 canvas
-                    .copy(&pen_canvas.pen_canvas, None, Rect::new(0, 0, 800, 600))
+                    .copy(&pen_canvas.main_canvas, None, Rect::new(0, 0, 800, 600))
                     .unwrap();
             }
         }
@@ -196,6 +205,8 @@ impl<'a> Project<'a> {
                     size: sprite["size"].as_f64().unwrap() as f32,
                     costume_number: 0,
                     pen_down: false,
+                    pen_radius: 1,
+                    pen_color: Color::RGB(0, 0, 255),
                 }
             },
         );
@@ -244,7 +255,11 @@ impl<'a> Project<'a> {
         let mut hat_blocks: Vec<(&String, &serde_json::Value)> = vec![];
         for (block_id, block_data) in sprite["blocks"].as_object().unwrap() {
             if block_data.is_array() {
-                eprintln!("[unimplemented] block is an array");
+                eprintln!(
+                    "{}[error]{} block is an array (possibly unimplemented feature)",
+                    ansi_codes::RED,
+                    ansi_codes::RESET
+                );
                 break;
             }
             // If the block has no parent (At the top)
@@ -274,7 +289,11 @@ impl<'a> Project<'a> {
                     sprite,
                 ),
                 _ => {
-                    eprintln!("[unimplemented hat block] {opcode}")
+                    eprintln!(
+                        "{}[unimplemented hat block]{} {opcode}",
+                        ansi_codes::RED,
+                        ansi_codes::RESET
+                    )
                 }
             }
         }
@@ -304,13 +323,30 @@ pub fn get_sprite_rect(
     sprite_x += canvas_width as f64 / 2.0;
     sprite_y = (canvas_height as f64 / 2.0) - sprite_y;
 
-    let rect = sdl2::rect::Rect::new(
+    sdl2::rect::Rect::new(
         sprite_x as i32,
         sprite_y as i32,
         width as u32,
         height as u32,
-    );
-    rect
+    )
+}
+
+pub fn get_scaled_point(
+    (x, y): (f64, f64),
+    (canvas_width, canvas_height): (u32, u32),
+) -> (i32, i32) {
+    let size_difference_f64 = canvas_width as f64 / 480.0;
+
+    let mut sprite_x = x;
+    let mut sprite_y = y;
+
+    sprite_x *= size_difference_f64;
+    sprite_y *= size_difference_f64;
+
+    sprite_x += canvas_width as f64 / 2.0;
+    sprite_y = (canvas_height as f64 / 2.0) - sprite_y;
+
+    (sprite_x as i32, sprite_y as i32)
 }
 
 fn costume_load_png<'a>(
@@ -394,17 +430,33 @@ fn dump_instructions_and_variables(
     variable_memory: &mut [Value],
     instructions: &Vec<Instruction>,
 ) {
-    println!("[variable dump] {{");
+    println!(
+        "{}[variable dump]{} {{",
+        ansi_codes::GREEN,
+        ansi_codes::RESET
+    );
     for (variable, i) in variables.iter() {
         println!(
-            "    {i}: {variable} ({})",
+            "    {}{i}: {}{variable}{} ({})",
+            ansi_codes::YELLOW,
+            ansi_codes::WHITE,
+            ansi_codes::RESET,
             variable_memory[*i].print(Some(variables))
         );
     }
     println!("}}");
-    println!("[instruction dump] {{");
+    println!(
+        "{}[instruction dump]{} {{",
+        ansi_codes::GREEN,
+        ansi_codes::RESET
+    );
     for instruction in instructions {
-        println!("    {}", instruction.print(Some(variables)));
+        println!(
+            "    {}{}{}",
+            ansi_codes::WHITE,
+            instruction.print(Some(variables)),
+            ansi_codes::RESET
+        );
     }
     println!("}}");
 }
