@@ -1,13 +1,10 @@
-use sdl2::{
-    pixels::Color,
-    rect::{Point, Rect},
-};
+use sdl2::pixels::Color;
 
 use crate::{
     ansi_codes,
     interpreter::{Instruction, Value},
     pen_line,
-    project::base::{get_scaled_point, get_sprite_rect},
+    project::base::get_sprite_rect,
     project_state::ProjectState,
     sprite::{Costume, GraphicalProperties},
 };

@@ -30,7 +30,6 @@ pub fn draw(
 
             if distance > properties.pen_radius as f64 {
                 let angle = calculate_direction(new_x, properties, new_y);
-
                 let line = get_rect(start_position, properties, distance);
 
                 texture_canvas
@@ -54,16 +53,15 @@ fn get_rect(
     properties: &mut GraphicalProperties,
     distance: f64,
 ) -> Rect {
-    let line_start_x = start_position.0 as i32 - (properties.pen_radius / 2);
-    let line_start_y = start_position.1 as i32;
+    let line_start_x = start_position.0 - (properties.pen_radius / 2);
+    let line_start_y = start_position.1;
 
-    let line = Rect::new(
+    Rect::new(
         line_start_x,
         line_start_y,
         properties.pen_radius as u32,
         distance as u32,
-    );
-    line
+    )
 }
 
 fn calculate_direction(new_x: f64, properties: &mut GraphicalProperties, new_y: f64) -> f64 {
