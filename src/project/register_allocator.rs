@@ -45,15 +45,12 @@ impl<'a> ParseState<'a> {
         register: usize,
         input: &str,
     ) {
-        match &current_block["inputs"][input].as_array().unwrap()[1] {
+        let input = &current_block["inputs"][input].as_array().unwrap()[1];
+        match input {
             serde_json::Value::String(n) => {
                 let block = self.get_block(n.as_str()).unwrap();
                 match self.compile_block(&block) {
                     BlockResult::Nothing => {
-                        self.instructions.push(Instruction::MemoryStore(
-                            Value::Pointer(self.register_get_variable_id(register)),
-                            Value::Number(0.0),
-                        ));
                         eprintln!(
                             "{}[unimplemented block]{} {} (inside expression)",
                             ansi_codes::RED,
@@ -71,16 +68,39 @@ impl<'a> ParseState<'a> {
                 }
             }
             serde_json::Value::Array(n) => {
-                if n.len() == 2 {
-                    self.instructions.push(Instruction::MemoryStore(
-                        Value::Pointer(self.register_get_variable_id(register)),
-                        {
-                            match n[1].as_str().unwrap().parse::<f64>() {
-                                Ok(n) => Value::Number(n),
-                                Err(_) => Value::Number(0.0),
-                            }
-                        },
-                    ));
+                match n[0].as_number().unwrap().as_i64().unwrap() {
+                    4..=9 => {
+                        self.instructions.push(Instruction::MemoryStore(
+                            Value::Pointer(self.register_get_variable_id(register)),
+                            {
+                                match n[1].as_str().unwrap().parse::<f64>() {
+                                    Ok(n) => Value::Number(n),
+                                    Err(_) => Value::Number(0.0),
+                                }
+                            },
+                        ));
+                    }
+                    10 => {
+                        self.instructions.push(Instruction::MemoryStore(
+                            Value::Pointer(self.register_get_variable_id(register)),
+                            Value::String(n[1].as_str().unwrap().to_owned()),
+                        ));
+                    }
+                    12 => {
+                        self.instructions.push(Instruction::MemoryStore(
+                            Value::Pointer(self.register_get_variable_id(register)),
+                            Value::Pointer(
+                                *self
+                                    .variables
+                                    .get(&n[2].as_str().unwrap().to_owned())
+                                    .unwrap(),
+                            ),
+                        ));
+                    }
+                    _ => eprintln!("[unimplemented input block] {}", input),
+                }
+                /*if n.len() == 2 {
+
                 } else {
                     self.instructions.push(Instruction::MemoryStore(
                         Value::Pointer(self.register_get_variable_id(register)),
@@ -91,7 +111,7 @@ impl<'a> ParseState<'a> {
                                 .unwrap(),
                         ),
                     ))
-                }
+                }*/
             }
             _ => panic!(),
         }

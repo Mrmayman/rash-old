@@ -5,8 +5,12 @@ use crate::{
 
 impl<'a> ParseState<'a> {
     pub fn c_looks_set_size(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let value = self.input_get_number(current_block, "SIZE");
-        self.instructions.push(Instruction::LooksSetSize(value));
+        let register = self.register_malloc();
+        self.register_set_to_input(current_block, register, "SIZE");
+        self.instructions
+            .push(Instruction::LooksSetSize(Value::Pointer(
+                self.register_get_variable_id(register),
+            )));
         BlockResult::Nothing
     }
 

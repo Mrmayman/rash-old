@@ -1,4 +1,5 @@
 use crate::{
+    ansi_codes,
     interpreter::{Instruction, Value},
     project::{base::BlockResult, state::ParseState},
 };
@@ -56,7 +57,9 @@ impl<'a> ParseState<'a> {
         match &result {
             crate::project::base::BlockResult::Nothing => {
                 eprintln!(
-                    "[unimplemented block] {} (inside expression: control_if)",
+                    "{}[unimplemented block]{} {} (inside expression: control_if)",
+                    ansi_codes::RED,
+                    ansi_codes::RESET,
                     condition["opcode"].as_str().unwrap()
                 )
             }
@@ -76,6 +79,11 @@ impl<'a> ParseState<'a> {
             }
         }
 
+        BlockResult::Nothing
+    }
+
+    pub fn c_control_repeat(&mut self, current_block: &serde_json::Value) -> BlockResult {
+        println!("{}", current_block);
         BlockResult::Nothing
     }
 }

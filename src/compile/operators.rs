@@ -132,63 +132,64 @@ impl<'a> ParseState<'a> {
 
     pub fn c_operators_mathop(&mut self, current_block: &serde_json::Value) -> BlockResult {
         let register = self.register_malloc();
-        let input = self.input_get_number(current_block, "NUM");
+        let num_register = self.register_malloc();
+        self.register_set_to_input(current_block, num_register, "NUM");
         let operator = current_block["fields"]["OPERATOR"].as_array().unwrap()[0]
             .as_str()
             .unwrap();
         match operator {
             "e ^" => self.instructions.push(Instruction::OperatorERaised(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "10 ^" => self.instructions.push(Instruction::OperatorPower(
                 Value::Pointer(self.register_get_variable_id(register)),
                 Value::Number(10.0),
-                input,
+                Value::Pointer(num_register),
             )),
             "sin" => self.instructions.push(Instruction::OperatorSin(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "cos" => self.instructions.push(Instruction::OperatorCos(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "tan" => self.instructions.push(Instruction::OperatorTan(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "abs" => self.instructions.push(Instruction::OperatorAbs(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "sqrt" => self.instructions.push(Instruction::OperatorSqrt(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "asin" => self.instructions.push(Instruction::OperatorASin(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "acos" => self.instructions.push(Instruction::OperatorACos(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "ln" => self.instructions.push(Instruction::OperatorLn(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "log" => self.instructions.push(Instruction::OperatorLog(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "floor" => self.instructions.push(Instruction::OperatorFloor(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             "ceiling" => self.instructions.push(Instruction::OperatorCeiling(
                 Value::Pointer(self.register_get_variable_id(register)),
-                input,
+                Value::Pointer(num_register),
             )),
             _ => {
                 eprintln!(
@@ -199,6 +200,7 @@ impl<'a> ParseState<'a> {
                 )
             }
         }
+        self.register_free(num_register);
         BlockResult::AllocatedMemory(register)
     }
 }

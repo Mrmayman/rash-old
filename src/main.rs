@@ -1,6 +1,5 @@
 use project_state::ProjectState;
 
-mod ansi_codes;
 /**
  *  Rash, a Scratch interpreter written in Rust
  *  Copyright (C) 2023 Mrmayman<navneetkrishna22@gmail.com>
@@ -18,6 +17,7 @@ mod ansi_codes;
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+mod ansi_codes;
 mod interpreter;
 mod pen_line;
 mod project_state;
@@ -27,6 +27,7 @@ mod thread;
 mod project {
     pub mod base;
     pub mod loader;
+    pub mod optimizer;
     pub mod register_allocator;
     pub mod state;
 }

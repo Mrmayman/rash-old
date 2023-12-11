@@ -12,10 +12,18 @@ impl<'a> ParseState<'a> {
         // Get the id of the variable in the Rash VM.
         let id: usize = *self.variables.get(var_name).unwrap();
 
+        let register = self.register_malloc();
+        self.register_set_to_input(current_block, register, "VALUE");
+        self.instructions.push(Instruction::MemoryStore(
+            Value::Pointer(id),
+            Value::Pointer(self.register_get_variable_id(register)),
+        ));
+        self.register_free(register);
+
         // Deal with 2 different cases:
         // 1) literal: set var to "1"
         // 2) expression/function: set var to (1 + 1)
-        match &current_block["inputs"]["VALUE"].as_array().unwrap()[1] {
+        /*match &current_block["inputs"]["VALUE"].as_array().unwrap()[1] {
             // If we are setting the variable to the output of another block (expression/function).
             serde_json::Value::String(s) => {
                 let block = self.get_block(s).unwrap();
@@ -23,7 +31,9 @@ impl<'a> ParseState<'a> {
                 match &result {
                     crate::project::base::BlockResult::Nothing => {
                         eprintln!(
-                            "[unimplemented block] {} (inside expression: data_setvariableto)",
+                            "{}[unimplemented block]{} {} (inside expression: data_setvariableto)",
+                            ansi_codes::RED,
+                            ansi_codes::RESET,
                             block["opcode"].as_str().unwrap()
                         )
                     }
@@ -56,7 +66,7 @@ impl<'a> ParseState<'a> {
                 _ => panic!("Setting variable to invalid data type"),
             },
             _ => panic!("Invalid data in block.variables.inputs.VALUE"),
-        }
+        }*/
         BlockResult::Nothing
     }
 }

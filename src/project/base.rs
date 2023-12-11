@@ -416,49 +416,13 @@ fn c_events_whenflagclicked(
         current_block = state.get_block(next).unwrap();
         state.compile_block(&current_block);
     }
-    instructions.push(Instruction::ThreadKill);
-
-    dump_instructions_and_variables(variables, variable_memory, &instructions);
+    state.finish();
+    state.optimize();
+    state.dump();
 
     temp_sprite
         .threads
         .push(Thread::new(instructions.into_boxed_slice()));
-}
-
-fn dump_instructions_and_variables(
-    variables: &mut HashMap<String, usize>,
-    variable_memory: &mut [Value],
-    instructions: &Vec<Instruction>,
-) {
-    println!(
-        "{}[variable dump]{} {{",
-        ansi_codes::GREEN,
-        ansi_codes::RESET
-    );
-    for (variable, i) in variables.iter() {
-        println!(
-            "    {}{i}: {}{variable}{} ({})",
-            ansi_codes::YELLOW,
-            ansi_codes::WHITE,
-            ansi_codes::RESET,
-            variable_memory[*i].print(Some(variables))
-        );
-    }
-    println!("}}");
-    println!(
-        "{}[instruction dump]{} {{",
-        ansi_codes::GREEN,
-        ansi_codes::RESET
-    );
-    for instruction in instructions {
-        println!(
-            "    {}{}{}",
-            ansi_codes::WHITE,
-            instruction.print(Some(variables)),
-            ansi_codes::RESET
-        );
-    }
-    println!("}}");
 }
 
 fn _ls(path: &std::path::Path) {

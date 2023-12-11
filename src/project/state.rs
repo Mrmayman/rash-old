@@ -51,6 +51,7 @@ impl<'a> ParseState<'a> {
             "operator_mathop" => self.c_operators_mathop(current_block),
             "control_forever" => self.c_control_forever(current_block),
             "control_if" => self.c_control_if(current_block),
+            "control_repeat" => self.c_control_repeat(current_block),
             "motion_gotoxy" => self.c_motion_go_to(current_block),
             "motion_changexby" => self.c_motion_change_x(current_block),
             "motion_changeyby" => self.c_motion_change_y(current_block),
@@ -94,113 +95,6 @@ impl<'a> ParseState<'a> {
         }
     }
 
-    pub fn input_get_number(&mut self, current_block: &serde_json::Value, name: &str) -> Value {
-        let input_1_data = current_block["inputs"][name].as_array().unwrap();
-
-        // Deal with 2 different cases:
-        // 1) Expression/function: set var to (1 + 1)
-        // 2) Literal: set var to "1"
-
-        if input_1_data.len() == 3 {
-            // Case 1) expression/function: set var to (1 + 1)
-
-            // Deal with 2 further cases:
-            // 1.1) Block output: set var to (1 + 1)
-            // 1.2) Variable output: set var to other_var
-
-            match &input_1_data[1] {
-                // Case 1.1) block output: set var to (1 + 1)
-                serde_json::Value::String(n) => {
-                    let value = self.input_number_deal_with_block_output(n);
-                    self.register_free(value.1.unwrap());
-                    value.0
-                }
-                // Case 1.2) Variable output: set var to other_var
-                serde_json::Value::Array(n) => {
-                    let ptr = self.variables.get(&n[2].as_str().unwrap().to_string());
-                    Value::Pointer(*ptr.unwrap())
-                }
-                _ => panic!(),
-            }
-        } else {
-            // Case 2) Literal: set var to "1"
-            let num = input_1_data[1].as_array().unwrap()[1]
-                .as_str()
-                .unwrap()
-                .to_string();
-            match num.parse::<f64>() {
-                Ok(n) => Value::Number(n),
-                Err(_) => Value::Number(0.0),
-            }
-        }
-    }
-
-    pub fn input_get_number_multi_input(
-        &mut self,
-        current_block: &serde_json::Value,
-        name: &str,
-    ) -> (Value, Option<usize>) {
-        let input_1_data = current_block["inputs"][name].as_array().unwrap();
-
-        // Deal with 2 different cases:
-        // 1) Expression/function: set var to (1 + 1)
-        // 2) Literal: set var to "1"
-
-        if input_1_data.len() == 3 {
-            // Case 1) expression/function: set var to (1 + 1)
-
-            // Deal with 2 further cases:
-            // 1.1) Block output: set var to (1 + 1)
-            // 1.2) Variable output: set var to other_var
-
-            match &input_1_data[1] {
-                // Case 1.1) block output: set var to (1 + 1)
-                serde_json::Value::String(n) => self.input_number_deal_with_block_output(n),
-                // Case 1.2) Variable output: set var to other_var
-                serde_json::Value::Array(n) => {
-                    let ptr = self.variables.get(&n[2].as_str().unwrap().to_string());
-                    (Value::Pointer(*ptr.unwrap()), None)
-                }
-                _ => panic!(),
-            }
-        } else {
-            // Case 2) Literal: set var to "1"
-
-            let num = input_1_data[1].as_array().unwrap()[1]
-                .as_str()
-                .unwrap()
-                .to_string();
-            match num.parse::<f64>() {
-                Ok(n) => (Value::Number(n), None),
-                Err(_) => (Value::Number(0.0), None),
-            }
-        }
-    }
-
-    fn input_number_deal_with_block_output(&mut self, block_id: &str) -> (Value, Option<usize>) {
-        // Get the input block.
-        // set var to (1 + 1): Here the input block would be the plus operator.
-        let input_block = self.get_block(block_id).unwrap();
-
-        // Try to compile the block
-        match self.compile_block(&input_block) {
-            // If the block is not an operator (error).
-            BlockResult::Nothing => {
-                eprintln!(
-                    "{}[unimplemented block]{} {}",
-                    ansi_codes::RED,
-                    ansi_codes::RESET,
-                    input_block["opcode"].as_str().unwrap()
-                );
-                (Value::Number(0.0), Some(0))
-            }
-            // Otherwise, deal with it.
-            BlockResult::AllocatedMemory(n) => {
-                (Value::Pointer(self.register_get_variable_id(n)), Some(n))
-            }
-        }
-    }
-
     pub fn get_block(&self, next: &str) -> Option<serde_json::Value> {
         for (block_id, block_data) in self.sprite["blocks"].as_object().unwrap() {
             if block_id == next {
@@ -208,5 +102,52 @@ impl<'a> ParseState<'a> {
             }
         }
         None
+    }
+
+    pub fn dump(&self) {
+        println!(
+            "{}[variable dump]{} {{",
+            ansi_codes::GREEN,
+            ansi_codes::RESET
+        );
+        for (variable, i) in self.variables.iter() {
+            println!(
+                "    {}{i}: {}{variable}{} ({})",
+                ansi_codes::YELLOW,
+                ansi_codes::WHITE,
+                ansi_codes::RESET,
+                self.variable_data[*i].print(Some(self.variables))
+            );
+        }
+        println!("}}");
+        println!(
+            "{}[memory leak dump]{} {{",
+            ansi_codes::GREEN,
+            ansi_codes::RESET
+        );
+        for (index, variable) in self.temp_variables.iter().enumerate() {
+            if *variable {
+                println!("    thread{}tempvar{}", self.thread_number, index,);
+            }
+        }
+        println!("}}");
+        println!(
+            "{}[instruction dump]{} {{",
+            ansi_codes::GREEN,
+            ansi_codes::RESET
+        );
+        for instruction in self.instructions.iter() {
+            println!(
+                "    {}{}{}",
+                ansi_codes::WHITE,
+                instruction.print(Some(self.variables)),
+                ansi_codes::RESET
+            );
+        }
+        println!("}}");
+    }
+
+    pub fn finish(&mut self) {
+        self.instructions.push(Instruction::ThreadKill)
     }
 }

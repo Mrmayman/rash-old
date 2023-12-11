@@ -5,39 +5,55 @@ use crate::{
 
 impl<'a> ParseState<'a> {
     pub fn c_motion_go_to(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let (x, x_ptr) = self.input_get_number_multi_input(current_block, "X");
-        let (y, y_ptr) = self.input_get_number_multi_input(current_block, "Y");
-        self.instructions.push(Instruction::MotionSetXY(x, y));
-        if let Some(ptr) = x_ptr {
-            self.register_free(ptr);
-        }
-        if let Some(ptr) = y_ptr {
-            self.register_free(ptr);
-        }
+        let x = self.register_malloc();
+        let y = self.register_malloc();
+
+        self.register_set_to_input(current_block, x, "X");
+        self.register_set_to_input(current_block, y, "Y");
+
+        self.instructions.push(Instruction::MotionSetXY(
+            Value::Pointer(self.register_get_variable_id(x)),
+            Value::Pointer(self.register_get_variable_id(y)),
+        ));
+
+        self.register_free(x);
+        self.register_free(y);
         BlockResult::Nothing
     }
 
     pub fn c_motion_set_x(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let x: Value = self.input_get_number(current_block, "X");
-        self.instructions.push(Instruction::MotionSetX(x));
+        let x = self.register_malloc();
+        self.register_set_to_input(current_block, x, "X");
+        self.instructions
+            .push(Instruction::MotionSetX(Value::Pointer(x)));
+        self.register_free(x);
         BlockResult::Nothing
     }
 
     pub fn c_motion_set_y(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let y: Value = self.input_get_number(current_block, "Y");
-        self.instructions.push(Instruction::MotionSetY(y));
+        let y = self.register_malloc();
+        self.register_set_to_input(current_block, y, "Y");
+        self.instructions
+            .push(Instruction::MotionSetY(Value::Pointer(y)));
+        self.register_free(y);
         BlockResult::Nothing
     }
 
     pub fn c_motion_change_x(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let input = self.input_get_number(current_block, "DX");
-        self.instructions.push(Instruction::MotionChangeX(input));
+        let x = self.register_malloc();
+        self.register_set_to_input(current_block, x, "DX");
+        self.instructions
+            .push(Instruction::MotionChangeX(Value::Pointer(x)));
+        self.register_free(x);
         BlockResult::Nothing
     }
 
     pub fn c_motion_change_y(&mut self, current_block: &serde_json::Value) -> BlockResult {
-        let input = self.input_get_number(current_block, "DY");
-        self.instructions.push(Instruction::MotionChangeY(input));
+        let y = self.register_malloc();
+        self.register_set_to_input(current_block, y, "DY");
+        self.instructions
+            .push(Instruction::MotionChangeY(Value::Pointer(y)));
+        self.register_free(y);
         BlockResult::Nothing
     }
 
