@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::{
     ansi_codes,
     interpreter::{Instruction, Value},
-    project::base::BlockResult,
 };
 
 pub struct ParseState<'a> {
@@ -36,7 +35,7 @@ impl<'a> ParseState<'a> {
             sprite,
         }
     }
-    pub fn compile_block(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn compile_block(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let opcode = current_block["opcode"].as_str().unwrap();
         match opcode {
             "data_setvariableto" => self.c_variables_set(current_block),
@@ -76,7 +75,7 @@ impl<'a> ParseState<'a> {
                     ansi_codes::RED,
                     ansi_codes::RESET
                 );
-                BlockResult::Nothing
+                None
             }
         }
     }

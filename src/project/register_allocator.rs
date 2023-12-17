@@ -3,7 +3,7 @@ use crate::{
     interpreter::{Instruction, Value},
 };
 
-use super::{base::BlockResult, state::ParseState};
+use super::state::ParseState;
 
 impl<'a> ParseState<'a> {
     pub fn register_malloc(&mut self) -> usize {
@@ -50,7 +50,7 @@ impl<'a> ParseState<'a> {
             serde_json::Value::String(n) => {
                 let block = self.get_block(n.as_str()).unwrap();
                 match self.compile_block(&block) {
-                    BlockResult::Nothing => {
+                    None => {
                         eprintln!(
                             "{}[unimplemented block]{} {} (inside expression)",
                             ansi_codes::RED,
@@ -58,7 +58,7 @@ impl<'a> ParseState<'a> {
                             block["opcode"].as_str().unwrap()
                         );
                     }
-                    BlockResult::AllocatedMemory(n) => {
+                    Some(n) => {
                         self.instructions.push(Instruction::MemoryStore(
                             Value::Pointer(self.register_get_variable_id(register)),
                             Value::Pointer(self.register_get_variable_id(n)),

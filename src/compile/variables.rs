@@ -1,10 +1,10 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::{base::BlockResult, state::ParseState},
+    project::state::ParseState,
 };
 
 impl<'a> ParseState<'a> {
-    pub fn c_variables_set(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_variables_set(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         // Get the internal name of the variable.
         let var_name = current_block["fields"]["VARIABLE"].as_array().unwrap()[1]
             .as_str()
@@ -29,7 +29,7 @@ impl<'a> ParseState<'a> {
                 let block = self.get_block(s).unwrap();
                 let result = self.compile_block(&block);
                 match &result {
-                    crate::project::base::BlockResult::Nothing => {
+                    crate::project::base::None => {
                         eprintln!(
                             "{}[unimplemented block]{} {} (inside expression: data_setvariableto)",
                             ansi_codes::RED,
@@ -67,6 +67,6 @@ impl<'a> ParseState<'a> {
             },
             _ => panic!("Invalid data in block.variables.inputs.VALUE"),
         }*/
-        BlockResult::Nothing
+        None
     }
 }

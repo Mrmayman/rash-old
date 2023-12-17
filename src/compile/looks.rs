@@ -1,20 +1,20 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::{base::BlockResult, state::ParseState},
+    project::state::ParseState,
 };
 
 impl<'a> ParseState<'a> {
-    pub fn c_looks_set_size(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_looks_set_size(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register = self.register_malloc();
         self.register_set_to_input(current_block, register, "SIZE");
         self.instructions
             .push(Instruction::LooksSetSize(Value::Pointer(
                 self.register_get_variable_id(register),
             )));
-        BlockResult::Nothing
+        None
     }
 
-    pub fn c_looks_switch_costume(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_looks_switch_costume(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let sub_block = self
             .get_block(
                 current_block["inputs"]["COSTUME"].as_array().unwrap()[1]
@@ -33,8 +33,8 @@ impl<'a> ParseState<'a> {
             costume_value = Value::String(costume);
         } else {
             match self.compile_block(&sub_block) {
-                BlockResult::Nothing => costume_value = Value::Number(0.0),
-                BlockResult::AllocatedMemory(n) => {
+                None => costume_value = Value::Number(0.0),
+                Some(n) => {
                     costume_value = Value::Pointer(self.register_get_variable_id(n));
                     self.register_free(n)
                 }
@@ -43,10 +43,10 @@ impl<'a> ParseState<'a> {
 
         self.instructions
             .push(Instruction::LooksSetCostume(costume_value));
-        BlockResult::Nothing
+        None
     }
 
-    pub fn c_looks_get_costume(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_looks_get_costume(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register = self.register_malloc();
         if current_block["fields"]["NUMBER_NAME"].as_array().unwrap()[0]
             .as_str()
@@ -60,16 +60,16 @@ impl<'a> ParseState<'a> {
         } else {
             todo!()
         }
-        BlockResult::AllocatedMemory(register)
+        Some(register)
     }
 
-    pub fn c_looks_hide(&mut self) -> BlockResult {
+    pub fn c_looks_hide(&mut self) -> Option<usize> {
         self.instructions.push(Instruction::LooksHide);
-        BlockResult::Nothing
+        None
     }
 
-    pub fn c_looks_show(&mut self) -> BlockResult {
+    pub fn c_looks_show(&mut self) -> Option<usize> {
         self.instructions.push(Instruction::LooksShow);
-        BlockResult::Nothing
+        None
     }
 }

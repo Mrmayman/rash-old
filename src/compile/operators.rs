@@ -1,7 +1,7 @@
 use crate::{
     ansi_codes,
     interpreter::{Instruction, Value},
-    project::{base::BlockResult, state::ParseState},
+    project::state::ParseState,
 };
 
 impl<'a> ParseState<'a> {
@@ -14,7 +14,7 @@ impl<'a> ParseState<'a> {
         (register1, register2)
     }
 
-    pub fn c_operators_add(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_add(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let (register1, register2) = self.get_operator_registers(current_block);
 
         self.instructions.push(Instruction::OperatorAdd(
@@ -24,10 +24,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_subtract(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_subtract(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let (register1, register2) = self.get_operator_registers(current_block);
 
         self.instructions.push(Instruction::OperatorSubtract(
@@ -37,10 +37,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_multiply(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_multiply(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let (register1, register2) = self.get_operator_registers(current_block);
 
         self.instructions.push(Instruction::OperatorMultiply(
@@ -50,10 +50,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_divide(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_divide(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let (register1, register2) = self.get_operator_registers(current_block);
 
         self.instructions.push(Instruction::OperatorDivide(
@@ -63,10 +63,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_mod(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_mod(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let (register1, register2) = self.get_operator_registers(current_block);
 
         self.instructions.push(Instruction::OperatorModulo(
@@ -76,10 +76,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_greater(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_greater(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register1 = self.register_malloc();
         let register2 = self.register_malloc();
 
@@ -93,10 +93,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_lesser(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_lesser(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register1 = self.register_malloc();
         let register2 = self.register_malloc();
 
@@ -110,10 +110,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_equals(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_equals(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register1 = self.register_malloc();
         let register2 = self.register_malloc();
 
@@ -127,10 +127,10 @@ impl<'a> ParseState<'a> {
         ));
 
         self.register_free(register2);
-        BlockResult::AllocatedMemory(register1)
+        Some(register1)
     }
 
-    pub fn c_operators_mathop(&mut self, current_block: &serde_json::Value) -> BlockResult {
+    pub fn c_operators_mathop(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register = self.register_malloc();
         let num_register = self.register_malloc();
         self.register_set_to_input(current_block, num_register, "NUM");
@@ -201,6 +201,6 @@ impl<'a> ParseState<'a> {
             }
         }
         self.register_free(num_register);
-        BlockResult::AllocatedMemory(register)
+        Some(register)
     }
 }

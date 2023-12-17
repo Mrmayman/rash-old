@@ -20,11 +20,6 @@ pub struct Project<'a> {
     pub json: serde_json::Value,
 }
 
-pub enum BlockResult {
-    Nothing,
-    AllocatedMemory(usize),
-}
-
 impl<'a> Project<'a> {
     pub fn new(
         file_path: String,
