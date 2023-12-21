@@ -127,6 +127,8 @@ impl<'a> ParseState<'a> {
         )));
         self.jump_counter += 1;
 
+        self.register_free(condition.unwrap());
+
         None
     }
 }

@@ -67,13 +67,13 @@ impl<'a> ParseState<'a> {
                     }
                 }
             }
-            serde_json::Value::Array(n) => {
-                match n[0].as_number().unwrap().as_i64().unwrap() {
+            serde_json::Value::Array(input_array) => {
+                match input_array[0].as_number().unwrap().as_i64().unwrap() {
                     4..=9 => {
                         self.instructions.push(Instruction::MemoryStore(
                             Value::Pointer(self.register_get_variable_id(register)),
                             {
-                                match n[1].as_str().unwrap().parse::<f64>() {
+                                match input_array[1].as_str().unwrap().parse::<f64>() {
                                     Ok(n) => Value::Number(n),
                                     Err(_) => Value::Number(0.0),
                                 }
@@ -83,7 +83,7 @@ impl<'a> ParseState<'a> {
                     10 => {
                         self.instructions.push(Instruction::MemoryStore(
                             Value::Pointer(self.register_get_variable_id(register)),
-                            Value::String(n[1].as_str().unwrap().to_owned()),
+                            Value::String(input_array[1].as_str().unwrap().to_owned()),
                         ));
                     }
                     12 => {
@@ -92,26 +92,13 @@ impl<'a> ParseState<'a> {
                             Value::Pointer(
                                 *self
                                     .variables
-                                    .get(&n[2].as_str().unwrap().to_owned())
+                                    .get(&input_array[2].as_str().unwrap().to_owned())
                                     .unwrap(),
                             ),
                         ));
                     }
                     _ => eprintln!("[unimplemented input block] {}", input),
                 }
-                /*if n.len() == 2 {
-
-                } else {
-                    self.instructions.push(Instruction::MemoryStore(
-                        Value::Pointer(self.register_get_variable_id(register)),
-                        Value::Pointer(
-                            *self
-                                .variables
-                                .get(&n[2].as_str().unwrap().to_string())
-                                .unwrap(),
-                        ),
-                    ))
-                }*/
             }
             _ => panic!(),
         }
