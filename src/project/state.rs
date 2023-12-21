@@ -9,7 +9,7 @@ pub struct ParseState<'a> {
     pub variables: &'a mut HashMap<String, usize>,
     pub variable_data: &'a mut Vec<Value>,
     pub instructions: &'a mut Vec<Instruction>,
-    pub forever_nest: i64,
+    pub jump_counter: i64,
     pub if_jump_number: i64,
     pub temp_variables: Vec<bool>,
     pub thread_number: usize,
@@ -28,7 +28,7 @@ impl<'a> ParseState<'a> {
             variables,
             variable_data,
             instructions,
-            forever_nest: 0,
+            jump_counter: 0,
             if_jump_number: 0,
             temp_variables: vec![],
             thread_number,
@@ -51,6 +51,7 @@ impl<'a> ParseState<'a> {
             "control_forever" => self.c_control_forever(current_block),
             "control_if" => self.c_control_if(current_block),
             "control_repeat" => self.c_control_repeat(current_block),
+            "control_repeat_until" => self.c_control_repeat_until(current_block),
             "motion_gotoxy" => self.c_motion_go_to(current_block),
             "motion_changexby" => self.c_motion_change_x(current_block),
             "motion_changeyby" => self.c_motion_change_y(current_block),
@@ -61,6 +62,7 @@ impl<'a> ParseState<'a> {
             "looks_setsizeto" => self.c_looks_set_size(current_block),
             "looks_switchcostumeto" => self.c_looks_switch_costume(current_block),
             "looks_costumenumbername" => self.c_looks_get_costume(current_block),
+            "looks_nextcostume" => self.c_looks_next_costume(),
             "looks_show" => self.c_looks_show(),
             "looks_hide" => self.c_looks_hide(),
             "pen_clear" => self.c_pen_clear(),
@@ -82,7 +84,14 @@ impl<'a> ParseState<'a> {
 
     pub fn compile_substack(&mut self, current_block: &serde_json::Value) {
         let block_input = &current_block["inputs"]["SUBSTACK"];
-        let block_id = block_input.as_array().unwrap()[1].as_str().unwrap();
+        if let serde_json::Value::Null = block_input {
+            return;
+        }
+        let block_id = match block_input.as_array().unwrap()[1] {
+            serde_json::Value::Null => return,
+            serde_json::Value::String(ref id) => id.as_str(),
+            _ => panic!("Weird json in SUBSTACK"),
+        };
         let mut block = self.get_block(block_id).unwrap();
 
         self.compile_block(&block);
@@ -146,7 +155,23 @@ impl<'a> ParseState<'a> {
         println!("}}");
     }
 
+    pub fn get_input_bool(&mut self, current_block: &serde_json::Value) -> Option<usize> {
+        let condition = self
+            .get_block(
+                current_block["inputs"]["CONDITION"].as_array().unwrap()[1]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+        self.compile_block(&condition)
+    }
+
     pub fn finish(&mut self) {
         self.instructions.push(Instruction::ThreadKill)
+    }
+
+    pub fn pause(&mut self) {
+        self.instructions.push(Instruction::ThreadPause);
+        self.instructions.push(Instruction::ThreadPause);
     }
 }

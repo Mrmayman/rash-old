@@ -25,7 +25,7 @@ impl<'a> ParseState<'a> {
         let size = self.register_malloc();
         self.register_set_to_input(current_block, size, "SIZE");
         self.instructions.push(Instruction::PenSetRadius(
-            crate::interpreter::Value::Pointer(size),
+            crate::interpreter::Value::Pointer(self.register_get_variable_id(size)),
         ));
         self.register_free(size);
         None

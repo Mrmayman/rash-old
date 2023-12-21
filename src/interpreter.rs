@@ -43,6 +43,7 @@ pub enum Instruction {
     MotionGetY(Value),
     LooksSetSize(Value),
     LooksSetCostume(Value),
+    LooksNextCostume,
     LooksGetCostumeNumber(Value),
     LooksHide,
     LooksShow,
@@ -220,6 +221,7 @@ impl Instruction {
             Instruction::PenSetRadius(value) => format!("pen_set_size({})", value.print(variables)),
             Instruction::LooksHide => "looks_hide()".to_owned(),
             Instruction::LooksShow => "looks_show()".to_owned(),
+            Instruction::LooksNextCostume => "looks_next_costume()".to_owned(),
         }
     }
 }

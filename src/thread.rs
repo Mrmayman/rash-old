@@ -366,6 +366,12 @@ impl<'a> Thread {
             }
             Instruction::LooksHide => properties.shown = false,
             Instruction::LooksShow => properties.shown = true,
+            Instruction::LooksNextCostume => {
+                let number_of_costumes = costumes.len() as i32;
+                let costume_number = properties.costume_number as i32 + 1;
+                properties.costume_number =
+                    (costume_number.rem_euclid(number_of_costumes)) as usize;
+            }
         }
         false
     }

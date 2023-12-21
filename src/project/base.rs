@@ -226,6 +226,9 @@ impl<'a> Project<'a> {
                 name: costume["name"].as_str().unwrap().to_string(),
             });
         }
+
+        let costume_number = sprite["currentCostume"].as_i64().unwrap();
+        temp_sprite.graphical_properties.costume_number = costume_number as usize;
     }
 
     fn sprite_load_variables(

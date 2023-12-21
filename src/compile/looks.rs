@@ -11,6 +11,7 @@ impl<'a> ParseState<'a> {
             .push(Instruction::LooksSetSize(Value::Pointer(
                 self.register_get_variable_id(register),
             )));
+        self.register_free(register);
         None
     }
 
@@ -61,6 +62,11 @@ impl<'a> ParseState<'a> {
             todo!()
         }
         Some(register)
+    }
+
+    pub fn c_looks_next_costume(&mut self) -> Option<usize> {
+        self.instructions.push(Instruction::LooksNextCostume);
+        None
     }
 
     pub fn c_looks_hide(&mut self) -> Option<usize> {
