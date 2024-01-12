@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use crate::thread_compiler::thread_compiler_variable_manager::VariableCompiler;
 
 #[derive(Clone)]
 pub enum Instruction {
@@ -55,7 +55,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn print(&self, variables: Option<&HashMap<String, usize>>) -> String {
+    pub fn print(&self, variables: Option<&VariableCompiler>) -> String {
         match &self {
             Instruction::MemoryStore(at, n) => {
                 format!("{} = {};", at.print(variables), n.print(variables))
@@ -226,31 +226,6 @@ impl Instruction {
     }
 }
 
-fn find_key_by_value(map: &HashMap<String, usize>, target_value: usize) -> Option<&String> {
-    for (key, &value) in map.iter() {
-        if value == target_value {
-            return Some(key);
-        }
-    }
-    None
-}
-
-pub fn get_var(variables: Option<&HashMap<String, usize>>, item: &Value) -> String {
-    match variables {
-        Some(variables) => {
-            let pointer: usize = item.get_pointer();
-            match find_key_by_value(variables, pointer) {
-                Some(key) => key.clone(),
-                None => panic!(),
-            }
-        }
-        None => match &item {
-            Value::Pointer(n) => "*".to_owned() + &n.to_string(),
-            _ => panic!(),
-        },
-    }
-}
-
 #[derive(Clone)]
 pub enum Value {
     Number(f64),
@@ -271,12 +246,23 @@ pub enum Value {
 }*/
 
 impl Value {
-    pub fn print(&self, variables: Option<&HashMap<String, usize>>) -> String {
+    pub fn print(&self, variables: Option<&VariableCompiler>) -> String {
         match &self {
             Value::Number(n) => format!("{}", n),
             Value::Boolean(n) => format!("{}", n),
             Value::String(n) => format!("\"{}\"", n),
-            Value::Pointer(n) => format!("*{}", get_var(variables, &Value::Pointer(*n))),
+            Value::Pointer(pointer) => {
+                let pointer_number = pointer.to_string();
+                format!(
+                    "*{}",
+                    match variables {
+                        Some(variables) => {
+                            variables.get_name(*pointer).unwrap()
+                        }
+                        None => &pointer_number,
+                    }
+                )
+            }
         }
     }
 

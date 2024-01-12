@@ -1,4 +1,4 @@
-use project_state::ProjectState;
+use project_state::Renderer;
 
 /**
  *  Rash, a Scratch interpreter written in Rust
@@ -18,6 +18,7 @@ use project_state::ProjectState;
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 mod ansi_codes;
+mod costume_loader;
 mod interpreter;
 mod pen_line;
 mod project_state;
@@ -25,26 +26,32 @@ mod sprite;
 mod thread;
 
 mod project {
-    pub mod base;
-    pub mod loader;
-    pub mod optimizer;
-    pub mod register_allocator;
-    pub mod state;
+    pub mod project_file_loader;
+    pub mod project_main;
 }
 
-mod compile {
-    pub mod control;
-    pub mod looks;
-    pub mod motion;
-    pub mod operators;
-    pub mod pen;
-    pub mod sensing;
-    pub mod variables;
+mod thread_compiler {
+    pub mod thread_compiler_main;
+    pub mod thread_compiler_optimizer;
+    pub mod thread_compiler_register_allocator;
+    pub mod thread_compiler_variable_manager;
+}
+
+mod blocks {
+    pub mod block_control;
+    pub mod block_looks;
+    pub mod block_motion;
+    pub mod block_operators;
+    pub mod block_pen;
+    pub mod block_sensing;
+    pub mod block_variables;
 }
 
 mod third_party {
     pub mod svg_to_png;
 }
+
+const FRAME_RATE: f64 = 30.0;
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -56,53 +63,39 @@ fn main() {
         .unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
+    let mut last_frame_time = std::time::Instant::now();
 
-    let mut project_state = ProjectState::new(&texture_creator, &mut canvas);
+    let mut renderer = Renderer::new(&texture_creator, &mut canvas);
 
-    let mut project = project::base::Project::new(get_project_file_path(), &texture_creator)
-        .expect("Could not load project");
+    let mut project =
+        project::project_main::Project::new(get_project_file_path(), &texture_creator)
+            .expect("Could not load project");
 
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut last_frame_time = std::time::Instant::now();
 
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => break 'running,
-                _ => {}
+                _ => { /* TODO */ }
             }
         }
 
         canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 255, 255));
         canvas.clear();
-        project.run(&mut canvas, &mut project_state);
-        canvas.set_draw_color(sdl2::pixels::Color::RGB(255, 0, 255));
 
-        project.draw(&mut canvas, &mut project_state);
+        project.run(&mut canvas, &mut renderer);
+        project.draw(&mut canvas, &mut renderer);
         canvas.present();
 
         let elapsed = last_frame_time.elapsed();
         last_frame_time = std::time::Instant::now();
-        let frame_time = std::time::Duration::from_secs_f64(1.0 / 30.0);
+        let frame_time = std::time::Duration::from_secs_f64(1.0 / FRAME_RATE);
 
         if elapsed < frame_time {
             std::thread::sleep(frame_time - elapsed);
         }
     }
-
-    /*let starting_time = std::time::Instant::now();
-    project.run();
-    println!(
-        "\nRASH:\n{} seconds elapsed, 1 million iterations",
-        starting_time.elapsed().as_secs_f64(),
-    );
-
-    let starting_time = std::time::Instant::now();
-    let pi = _calculate_pi();
-    println!(
-        "RUST:\n{} seconds elapsed, 1 million iterations\n\npi = {pi}",
-        starting_time.elapsed().as_secs_f64(),
-    );*/
 }
 
 fn get_project_file_path() -> String {

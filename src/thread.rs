@@ -4,8 +4,8 @@ use crate::{
     ansi_codes,
     interpreter::{Instruction, Value},
     pen_line,
-    project::base::get_sprite_rect,
-    project_state::ProjectState,
+    project::project_main::get_sprite_rect,
+    project_state::Renderer,
     sprite::{Costume, GraphicalProperties},
 };
 
@@ -30,7 +30,7 @@ impl<'a> Thread {
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        pen_canvas: &mut ProjectState,
+        pen_canvas: &mut Renderer,
     ) {
         loop {
             let should_break: bool =
@@ -59,7 +59,7 @@ impl<'a> Thread {
         properties: &mut GraphicalProperties,
         costumes: &Vec<Costume<'a>>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-        project_state: &mut ProjectState,
+        project_state: &mut Renderer,
     ) -> bool {
         match &self.instructions[self.counter] {
             Instruction::MemoryDump => {

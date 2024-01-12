@@ -44,19 +44,17 @@ pub fn render(
     // Check if the file is actually an SVG.
     match input.extension() {
         Some(e) if e.to_str() == Some("svg") => {}
-        Some(_) | None => return Err(format!("Filer {:?} is not of type SVG", input)),
+        Some(_) | None => return Err(format!("[error] SVG load: File {:?} is not SVG", input)),
     };
-
-    // Check if output PNG already exists.
-    let fo: &Path = output;
 
     // Load SVG Data.
-    let svg = match std::fs::read_to_string(input) {
+    let svg_data = match std::fs::read_to_string(input) {
         Ok(d) => d,
-        Err(_) => return Err("File {fi:?} does not exist".to_string()),
+        Err(_) => return Err(format!("[error] SVG load: File {input:?} does not exist")),
     };
 
-    let parsed: Svg = serde_xml_rs::from_str(&svg).unwrap();
+    // Check if the SVG is empty.
+    let parsed: Svg = serde_xml_rs::from_str(&svg_data).unwrap();
     if parsed.width == "0" && parsed.height == "0" {
         let blank_image = image::DynamicImage::new_rgba8(1, 1);
         blank_image.save(output).unwrap();
@@ -64,7 +62,7 @@ pub fn render(
     }
 
     // Setup USVG Options.
-    let opt = usvg::Options {
+    let usvg_options = usvg::Options {
         // Get file's absolute directory.
         resources_dir: std::fs::canonicalize(input)
             .ok()
@@ -73,16 +71,23 @@ pub fn render(
     };
 
     // Build SVG Tree.
-    let mut tree = match usvg::Tree::from_data(svg.as_bytes(), &opt) {
+    let mut tree = match usvg::Tree::from_data(svg_data.as_bytes(), &usvg_options) {
         Ok(v) => v,
-        Err(_) => return Err(format!("Failed to parse {} {svg}", input.to_string_lossy())),
+        Err(_) => {
+            return Err(format!(
+                "[error] SVG Load: Failed to parse {} {svg_data}",
+                input.to_string_lossy()
+            ))
+        }
     };
+
     // Render text if needed.
     tree.convert_text(fontdb);
 
     // Create Pixel Map to draw SVG to.
     let mut pixmap =
         tiny_skia::Pixmap::new(tree.size.width() as u32, tree.size.height() as u32).unwrap();
+
     // Draw to Pixel Map.
     resvg::render(
         &tree,
@@ -91,8 +96,11 @@ pub fn render(
         pixmap.as_mut(),
     )
     .expect("Could not render image from svg");
+
     // Save Pixel Map to PNG.
-    pixmap.save_png(fo).expect("Could not save converted PNG");
+    pixmap
+        .save_png(output)
+        .expect("Could not save converted PNG");
 
     Ok(())
 }

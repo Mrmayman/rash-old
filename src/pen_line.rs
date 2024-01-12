@@ -1,12 +1,12 @@
 use sdl2::rect::{Point, Rect};
 
 use crate::{
-    project::base::get_scaled_point, project_state::ProjectState, sprite::GraphicalProperties,
+    project::project_main::get_scaled_point, project_state::Renderer, sprite::GraphicalProperties,
 };
 
 pub fn draw(
     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-    pen_canvas: &mut ProjectState<'_>,
+    pen_canvas: &mut Renderer<'_>,
     properties: &mut GraphicalProperties,
     new_x: f64,
     new_y: f64,

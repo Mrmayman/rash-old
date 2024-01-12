@@ -1,9 +1,9 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::state::ParseState,
+    thread_compiler::thread_compiler_main::ThreadCompiler,
 };
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn c_sensing_timer(&mut self) -> Option<usize> {
         let register = self.register_malloc();
         self.instructions

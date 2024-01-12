@@ -1,10 +1,10 @@
 use crate::{
     ansi_codes,
     interpreter::{Instruction, Value},
-    project::state::ParseState,
+    thread_compiler::thread_compiler_main::ThreadCompiler,
 };
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     fn get_operator_registers(&mut self, current_block: &serde_json::Value) -> (usize, usize) {
         let register1 = self.register_malloc();
         let register2 = self.register_malloc();

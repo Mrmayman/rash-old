@@ -1,19 +1,19 @@
 use sdl2::pixels::{Color, PixelFormatEnum};
 
-pub struct ProjectState<'a> {
+pub struct Renderer<'a> {
     pub main_canvas: sdl2::render::Texture<'a>,
     pub pen_line_canvas: sdl2::render::Texture<'a>,
     pub scratch_timer: std::time::Instant,
 }
 
-impl<'a> ProjectState<'a> {
+impl<'a> Renderer<'a> {
     pub fn new(
         texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
-    ) -> ProjectState<'a> {
-        let mut this = ProjectState {
-            main_canvas: ProjectState::create_writable_canvas(texture_creator, canvas),
-            pen_line_canvas: ProjectState::create_writable_canvas(texture_creator, canvas),
+    ) -> Renderer<'a> {
+        let mut this = Renderer {
+            main_canvas: Renderer::create_writable_canvas(texture_creator, canvas),
+            pen_line_canvas: Renderer::create_writable_canvas(texture_creator, canvas),
             scratch_timer: std::time::Instant::now(),
         };
         this.update_pen_line_properties(canvas);

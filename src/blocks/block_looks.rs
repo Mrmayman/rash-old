@@ -1,9 +1,9 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::state::ParseState,
+    thread_compiler::thread_compiler_main::ThreadCompiler,
 };
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn c_looks_set_size(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let register = self.register_malloc();
         self.register_set_to_input(current_block, register, "SIZE");

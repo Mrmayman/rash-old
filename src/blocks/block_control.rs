@@ -1,9 +1,9 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::state::ParseState,
+    thread_compiler::thread_compiler_main::ThreadCompiler,
 };
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn c_control_forever(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         self.jump_counter += 1;
         self.instructions.push(Instruction::FlowDefinePlace(format!(

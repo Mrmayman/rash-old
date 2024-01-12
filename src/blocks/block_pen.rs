@@ -1,6 +1,6 @@
-use crate::{interpreter::Instruction, project::state::ParseState};
+use crate::{interpreter::Instruction, thread_compiler::thread_compiler_main::ThreadCompiler};
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn c_pen_clear(&mut self) -> Option<usize> {
         self.instructions.push(Instruction::PenClear);
         None

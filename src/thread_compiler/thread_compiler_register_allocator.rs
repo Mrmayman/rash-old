@@ -3,9 +3,9 @@ use crate::{
     interpreter::{Instruction, Value},
 };
 
-use super::state::ParseState;
+use super::thread_compiler_main::ThreadCompiler;
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn register_malloc(&mut self) -> usize {
         let index = {
             if let Some(index) = self.temp_variables.iter().position(|&x| !x) {
@@ -19,12 +19,9 @@ impl<'a> ParseState<'a> {
                 self.temp_variables.len() - 1
             }
         };
-        let var_number = self.variables.len();
-
         let temp_var_name = format!("thread{}tempvar{}", self.thread_number, index);
-        // If temp_var_name doesn't exist, add it.
-        self.variables.entry(temp_var_name).or_insert(var_number);
-        self.variable_data.push(Value::Number(0.0));
+
+        self.variables.push(temp_var_name, Value::Number(0.0));
         index
     }
 
@@ -33,9 +30,8 @@ impl<'a> ParseState<'a> {
     }
 
     pub fn register_get_variable_id(&self, index: usize) -> usize {
-        *self
-            .variables
-            .get(&format!("thread{}tempvar{}", self.thread_number, index))
+        self.variables
+            .get_id(&format!("thread{}tempvar{}", self.thread_number, index))
             .unwrap()
     }
 
@@ -90,9 +86,8 @@ impl<'a> ParseState<'a> {
                         self.instructions.push(Instruction::MemoryStore(
                             Value::Pointer(self.register_get_variable_id(register)),
                             Value::Pointer(
-                                *self
-                                    .variables
-                                    .get(&input_array[2].as_str().unwrap().to_owned())
+                                self.variables
+                                    .get_id(&input_array[2].as_str().unwrap().to_owned())
                                     .unwrap(),
                             ),
                         ));

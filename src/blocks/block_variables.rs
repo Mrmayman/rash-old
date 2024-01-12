@@ -1,16 +1,16 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::state::ParseState,
+    thread_compiler::thread_compiler_main::ThreadCompiler,
 };
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn c_variables_set(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         // Get the internal name of the variable.
         let var_name = current_block["fields"]["VARIABLE"].as_array().unwrap()[1]
             .as_str()
             .unwrap();
         // Get the id of the variable in the Rash VM.
-        let id: usize = *self.variables.get(var_name).unwrap();
+        let id: usize = self.variables.get_id(var_name).unwrap();
 
         let register = self.register_malloc();
         self.register_set_to_input(current_block, register, "VALUE");

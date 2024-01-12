@@ -1,13 +1,9 @@
-use std::collections::HashMap;
+use crate::{ansi_codes, interpreter::Instruction};
 
-use crate::{
-    ansi_codes,
-    interpreter::{Instruction, Value},
-};
+use super::thread_compiler_variable_manager::VariableCompiler;
 
-pub struct ParseState<'a> {
-    pub variables: &'a mut HashMap<String, usize>,
-    pub variable_data: &'a mut Vec<Value>,
+pub struct ThreadCompiler<'a> {
+    pub variables: &'a mut VariableCompiler,
     pub instructions: &'a mut Vec<Instruction>,
     pub jump_counter: i64,
     pub if_jump_number: i64,
@@ -16,17 +12,15 @@ pub struct ParseState<'a> {
     pub sprite: &'a serde_json::Value,
 }
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn new(
-        variables: &'a mut HashMap<String, usize>,
-        variable_data: &'a mut Vec<Value>,
+        variables: &'a mut VariableCompiler,
         instructions: &'a mut Vec<Instruction>,
         thread_number: usize,
         sprite: &'a serde_json::Value,
-    ) -> ParseState<'a> {
-        ParseState {
+    ) -> ThreadCompiler<'a> {
+        ThreadCompiler {
             variables,
-            variable_data,
             instructions,
             jump_counter: 0,
             if_jump_number: 0,
@@ -118,15 +112,7 @@ impl<'a> ParseState<'a> {
             ansi_codes::GREEN,
             ansi_codes::RESET
         );
-        for (variable, i) in self.variables.iter() {
-            println!(
-                "    {}{i}: {}{variable}{} ({})",
-                ansi_codes::YELLOW,
-                ansi_codes::WHITE,
-                ansi_codes::RESET,
-                self.variable_data[*i].print(Some(self.variables))
-            );
-        }
+        self.variables.dump();
         println!("}}");
         println!(
             "{}[memory leak dump]{} {{",
@@ -148,7 +134,7 @@ impl<'a> ParseState<'a> {
             println!(
                 "    {}{}{}",
                 ansi_codes::WHITE,
-                instruction.print(Some(self.variables)),
+                instruction.print(Some(&self.variables)),
                 ansi_codes::RESET
             );
         }

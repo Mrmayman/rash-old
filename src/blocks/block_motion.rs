@@ -1,9 +1,9 @@
 use crate::{
     interpreter::{Instruction, Value},
-    project::state::ParseState,
+    thread_compiler::thread_compiler_main::ThreadCompiler,
 };
 
-impl<'a> ParseState<'a> {
+impl<'a> ThreadCompiler<'a> {
     pub fn c_motion_go_to(&mut self, current_block: &serde_json::Value) -> Option<usize> {
         let x = self.register_malloc();
         let y = self.register_malloc();
