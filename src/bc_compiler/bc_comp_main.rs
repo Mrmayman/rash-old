@@ -1,6 +1,6 @@
 use crate::{ansi_codes, interpreter::Instruction};
 
-use super::thread_compiler_variable_manager::VariableCompiler;
+use super::bc_comp_variable_manager::VariableCompiler;
 
 pub struct ThreadCompiler<'a> {
     pub variables: &'a mut VariableCompiler,

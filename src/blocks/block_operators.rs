@@ -1,7 +1,7 @@
 use crate::{
     ansi_codes,
     interpreter::{Instruction, Value},
-    thread_compiler::thread_compiler_main::ThreadCompiler,
+    bc_compiler::bc_comp_main::ThreadCompiler,
 };
 
 impl<'a> ThreadCompiler<'a> {

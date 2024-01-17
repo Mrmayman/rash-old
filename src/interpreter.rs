@@ -1,4 +1,4 @@
-use crate::thread_compiler::thread_compiler_variable_manager::VariableCompiler;
+use crate::bc_compiler::bc_comp_variable_manager::VariableCompiler;
 
 #[derive(Clone)]
 pub enum Instruction {

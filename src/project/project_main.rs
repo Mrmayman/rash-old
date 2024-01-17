@@ -8,8 +8,8 @@ use crate::{
     project_state::Renderer,
     sprite::{Costume, GraphicalProperties, Sprite},
     thread::Thread,
-    thread_compiler::{
-        thread_compiler_main::ThreadCompiler, thread_compiler_variable_manager::VariableCompiler,
+    bc_compiler::{
+        bc_comp_main::ThreadCompiler, bc_comp_variable_manager::VariableCompiler,
     },
 };
 

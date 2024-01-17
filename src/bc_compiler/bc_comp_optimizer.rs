@@ -1,4 +1,4 @@
-use super::thread_compiler_main::ThreadCompiler;
+use super::bc_comp_main::ThreadCompiler;
 
 impl<'a> ThreadCompiler<'a> {
     pub fn optimize(&mut self) {

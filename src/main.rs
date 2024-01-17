@@ -30,11 +30,11 @@ mod project {
     pub mod project_main;
 }
 
-mod thread_compiler {
-    pub mod thread_compiler_main;
-    pub mod thread_compiler_optimizer;
-    pub mod thread_compiler_register_allocator;
-    pub mod thread_compiler_variable_manager;
+mod bc_compiler {
+    pub mod bc_comp_main;
+    pub mod bc_comp_optimizer;
+    pub mod bc_comp_register_allocator;
+    pub mod bc_comp_variable_manager;
 }
 
 mod blocks {

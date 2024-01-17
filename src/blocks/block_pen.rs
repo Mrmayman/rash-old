@@ -1,4 +1,4 @@
-use crate::{interpreter::Instruction, thread_compiler::thread_compiler_main::ThreadCompiler};
+use crate::{interpreter::Instruction, bc_compiler::bc_comp_main::ThreadCompiler};
 
 impl<'a> ThreadCompiler<'a> {
     pub fn c_pen_clear(&mut self) -> Option<usize> {
