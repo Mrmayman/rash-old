@@ -1,5 +1,10 @@
-# Rash
-A fast Scratch interpreter written in rust.
+# Update
+This project is abandoned, old and outdated. I am rewriting the whole thing with a cleaner design, and will publish it once ready.
+
+# Rash (old version)
+A fast Scratch interpreter written in rust. This is the old legacy version.
+
+The new version will release soon.
 
 # Setup and usage
 Until this is stable for proper use, you have to compile it from source.
