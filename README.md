@@ -18,8 +18,6 @@ My goal is to be faster than TurboWarp, while maintaining decent compatibility. 
 
 This project is in the "Get it working" stage of development. The code is terrible and ugly. Once it works reasonably well, I can move on to making it cleaner and faster.
 
-[Here is a document highlighting my progress on implementing features](https://docs.google.com/spreadsheets/d/1jYi5lsAyq6XeJPCKCpk4UkqF1YWVPX9C4d7-eTbXw9U/edit?usp=sharing)
-
 # Credits
 - Massive thanks to the creator of [svg2colored-png](https://github.com/MCorange99/svg2colored-png)! I couldn't figure out how to load SVG costumes but thanks to this, I can convert them to PNG.
 - Further thanks to the authors of all the libraries I used.
